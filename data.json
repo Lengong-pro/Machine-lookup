@@ -1,0 +1,59 @@
+{
+ "source": "ข้อมูลตัวอย่างจากรูป",
+ "updatedAt": "2026-10-15T01:40:00Z",
+ "sheets": [
+  {
+   "name": "1 Belt",
+   "headers": [
+    "รหัสตำแหน่ง",
+    "ประเภทท่อน",
+    "ความยาวสายพาน",
+    "ประเภทสายพาน",
+    "ประเภทมอเตอร์",
+    "LP",
+    "Areas"
+   ],
+   "rows": [
+    [
+     "LP211-BHT63-HS137",
+     "ICS Tray Straight",
+     "4850",
+     "PUL",
+     "Drive shaft complete low-speed (1.5 KW)",
+     "LP211",
+     "Sat-West"
+    ],
+    [
+     "LP201-BHT06-HS055",
+     "ICS Tray Straight",
+     "3250",
+     "PUL",
+     "Drive shaft complete low-speed (2.2 KW)",
+     "LP201",
+     "MTB-West"
+    ]
+   ]
+  },
+  {
+   "name": "2 Belt",
+   "headers": [
+    "รหัสตำแหน่ง",
+    "ประเภทท่อน",
+    "ความยาวสายพาน 1",
+    "ความยาวสายพาน 2",
+    "ประเภทสายพาน",
+    "ประเภทมอเตอร์"
+   ],
+   "rows": [
+    [
+     "LP253-BET81-HS001",
+     "ICS Tray Merge/Divert",
+     "5350",
+     "2740",
+     "PUL",
+     "Drive Shaft Merge (1.1 KW)"
+    ]
+   ]
+  }
+ ]
+}
