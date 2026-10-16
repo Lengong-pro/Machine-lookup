@@ -52,6 +52,18 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .ghost{background:var(--surface);color:var(--fg);border-color:var(--line)}
 .danger{background:transparent;color:var(--danger);border-color:color-mix(in srgb,var(--danger) 45%,transparent)}
 .cam{background:rgba(255,255,255,.14);color:var(--frame-ink);border-color:rgba(255,255,255,.35)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.camview{position:fixed;inset:0;z-index:60;background:#000;display:flex;flex-direction:column}
+.camview video{flex:1;min-height:0;width:100%;object-fit:cover;background:#000}
+.camguide{position:absolute;left:0;right:0;top:env(safe-area-inset-top,0px);bottom:110px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;pointer-events:none}
+.camframe{width:min(86%,560px);aspect-ratio:4/1;border:3px solid #ffd34d;border-radius:8px;box-shadow:0 0 0 9999px rgba(0,0,0,.35)}
+.camguide p{margin:0;color:#fff;font-weight:600;text-shadow:0 1px 3px #000;padding-inline:16px;text-align:center}
+.camctl{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between;align-items:center;
+  padding-block:18px calc(18px + env(safe-area-inset-bottom,0px));padding-left:max(24px,env(safe-area-inset-left,0px));padding-right:max(24px,env(safe-area-inset-right,0px))}
+.shutter{width:74px;height:74px;border-radius:50%;background:#fff;border:5px solid rgba(255,255,255,.45);background-clip:padding-box;padding:0}
+.shutter:active{transform:scale(.94)}
+.camx{width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.18);color:#fff;font-size:20px;padding:0}
+.camx-sp{width:48px}
 button:focus-visible,.btn:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #ffd34d;outline-offset:2px}
 .status{font-size:14px;color:var(--muted);min-height:1.2em}
 .status.err{color:var(--warn)}
@@ -134,8 +146,12 @@ details ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
         <input id="q" placeholder="LP201.BHT06_HS055" autocapitalize="characters" spellcheck="false">
         <button class="go" type="submit">ค้นหา</button>
       </div>
-      <label class="btn cam" for="photo">📷 ถ่ายรูป / เลือกรูปป้าย</label>
-      <input id="photo" type="file" accept="image/*" capture="environment" hidden>
+      <div class="row2">
+        <button class="btn cam" type="button" id="camBtn">📷 ถ่ายรูปป้าย</button>
+        <label class="btn cam" for="photo">🖼️ เลือกจากคลังรูป</label>
+      </div>
+      <input id="photo" type="file" accept="image/*" hidden>
+      <input id="photoCap" type="file" accept="image/*" capture="environment" hidden>
     </form>
     <div class="status" id="status" role="status"></div>
     <div id="out"></div>
@@ -199,6 +215,15 @@ details ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
   </section>
 </div>
 
+<div class="camview" id="camview" hidden role="dialog" aria-label="กล้องถ่ายป้าย">
+  <video id="camvid" playsinline muted autoplay></video>
+  <div class="camguide"><div class="camframe"></div><p>เล็งป้ายรหัสให้อยู่ในกรอบ แล้วกดถ่าย</p></div>
+  <div class="camctl">
+    <button type="button" class="camx" id="camClose" aria-label="ปิดกล้อง">✕</button>
+    <button type="button" class="shutter" id="camShot" aria-label="ถ่ายรูป"></button>
+    <span class="camx-sp"></span>
+  </div>
+</div>
 <div class="pubbar" id="pubbar" hidden>
   <div class="in">
     <span id="pubtxt"></span>
@@ -615,14 +640,39 @@ async function doOCR(){
   catch(err){console.error(err);ocrWorker=null;say('status',`โหลดตัวอ่านรูปไม่สำเร็จ (${err&&err.message||err}) อาจเป็นเพราะเน็ตช้าหรือเครือข่ายบริษัทบล็อก ลองใช้เน็ตมือถือแล้วกดถ่ายรูปใหม่ ระหว่างนี้พิมพ์รหัสแทนได้`,'err')}
   finally{ocrBusy=false}
 }
-$('photo').addEventListener('change',async e=>{
-  const file=e.target.files[0];if(!file)return;e.target.value='';
+async function useImage(blob){
   if(ocrBusy){say('status','กำลังอ่านรูปก่อนหน้าอยู่ รอสักครู่');return}
   $('out').innerHTML='';
   say('status','กำลังเปิดรูป…');
-  try{ocrImg=await loadImg(file)}catch(err){say('status','เปิดรูปนี้ไม่ได้ ลองถ่ายใหม่ หรือเลือกรูปแบบ JPG/PNG','err');return}
+  try{ocrImg=await loadImg(blob)}catch(err){say('status','เปิดรูปนี้ไม่ได้ ลองถ่ายใหม่ หรือเลือกรูปแบบ JPG/PNG','err');return}
   doOCR();
-});
+}
+for(const id of ['photo','photoCap'])$(id).addEventListener('change',e=>{const f=e.target.files[0];e.target.value='';if(f)useImage(f)});
+
+/* ---------- กล้องในหน้าเว็บ (ใช้ได้แม้เบราว์เซอร์ในแอป LINE ที่ไม่เปิดกล้องจากปุ่มเลือกไฟล์) ---------- */
+let camStream=null;
+function stopCam(){if(camStream){camStream.getTracks().forEach(t=>t.stop());camStream=null}$('camvid').srcObject=null;$('camview').hidden=true;document.body.style.overflow=''}
+$('camBtn').onclick=async()=>{
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){$('photoCap').click();return}
+  try{
+    camStream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}}});
+    const v=$('camvid');v.srcObject=camStream;$('camview').hidden=false;document.body.style.overflow='hidden';
+    await v.play().catch(()=>{});
+    if(!paddle)loadPaddle().catch(()=>{}); // โหลดตัวอ่าน AI ระหว่างเล็งกล้อง
+  }catch(err){
+    stopCam();
+    say('status',err&&err.name==='NotAllowedError'?'ไม่ได้รับอนุญาตให้ใช้กล้อง กดอนุญาตกล้องในการตั้งค่าเบราว์เซอร์ หรือใช้ปุ่ม “เลือกจากคลังรูป” แทน':'เปิดกล้องในหน้านี้ไม่ได้ ใช้ปุ่ม “เลือกจากคลังรูป” แทน หรือเปิดลิงก์ใน Chrome/Safari','err');
+  }
+};
+$('camShot').onclick=()=>{
+  const v=$('camvid');if(!v.videoWidth){say('status','กล้องยังไม่พร้อม รอสักครู่แล้วกดอีกครั้ง','err');return}
+  const c=document.createElement('canvas');c.width=v.videoWidth;c.height=v.videoHeight;c.getContext('2d').drawImage(v,0,0);
+  stopCam();
+  c.toBlob(b=>{if(b)useImage(b);else say('status','ถ่ายรูปไม่สำเร็จ ลองอีกครั้ง','err')},'image/jpeg',.92);
+};
+$('camClose').onclick=stopCam;
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&camStream)stopCam()});
+window.addEventListener('hashchange',()=>{if(camStream)stopCam()});
 
 /* ---------- tabs ---------- */
 function route(){
