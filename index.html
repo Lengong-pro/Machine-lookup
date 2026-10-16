@@ -307,7 +307,7 @@ function matchOCR(text){
   for(const e of INDEX){
     if(seen.has(e.fk))continue;seen.add(e.fk);
     const p=e.cf||(e.cf=conf(/^LP\d/.test(e.fk)?e.fk.slice(2):e.fk));let d=99;
-    for(const c of cands){const x=subDist(p,c);if(x<d)d=x;if(!d)break}
+    for(const c of cands){const x=subDist(p,c)+Math.max(0,c.length-p.length-3)*.6;if(x<d)d=x;if(!d)break}
     res.push({e,d});
   }
   res.sort((a,b)=>a.d-b.d);
@@ -600,16 +600,13 @@ function ocrResult(r){
     say('status',b[0].d>.5?`📷 อ่านได้ใกล้เคียง “${seen}” → ${e.code} โปรดตรวจว่าตรงกับป้าย`:`📷 อ่านรหัสได้ว่า: ${e.code}`,b[0].d>.5?'':'good');
     return;
   }
-  if(seen)$('q').value=seen;
-  const near=b.filter(x=>x.d<=4.5).slice(0,6);
-  if(near.length){
-    showList(near.map(x=>x.e),seen||'รูปภาพ');
-    $('out').querySelector('.head').textContent=seen?`📷 อ่านป้ายได้ว่า “${seen}” แต่ไม่ตรงกับรหัสในข้อมูล · รหัสใกล้เคียง:`:'📷 อ่านป้ายได้ไม่ชัด · รหัสใกล้เคียง:';
-    say('status','ถ้าไม่มีรหัสที่ถูกในรายการ ลองถ่ายใหม่ให้ป้ายชัดขึ้น หรือตรวจว่ารหัสนี้มีในไฟล์ Excel แล้ว','err');return;
-  }
+  // ไม่ตรงแน่ชัด: ใส่ข้อความที่อ่านได้ลงช่องค้นหา ให้ผู้ใช้แก้เองได้
+  const guess=b.length&&b[0].d<=1&&(!b[1]||b[1].d-b[0].d>=.4)?b[0].e.code:seen;
+  if(!guess){$('out').innerHTML='';say('status','ไม่เจอป้ายรหัสในรูป ลองถ่ายใหม่ให้ป้ายอยู่กลางภาพ ชัด และไม่มีแสงสะท้อน หรือพิมพ์รหัสแทน','err');return}
+  $('q').value=guess;
+  if(search(guess,true)==='one'){say('status',`📷 อ่านป้ายได้ว่า “${seen||guess}” โปรดตรวจว่าตรงกับป้าย`);return}
   $('out').innerHTML='';
-  if(seen)say('status',`📷 อ่านป้ายได้ว่า “${seen}” แต่ไม่พบรหัสนี้ในข้อมูล ตรวจว่ารหัสนี้มีในไฟล์ Excel หรือยัง`,'err');
-  else say('status','ไม่เจอป้ายรหัสในรูป ลองถ่ายใหม่ให้ป้ายอยู่กลางภาพ ชัด และไม่มีแสงสะท้อน หรือพิมพ์รหัสแทน','err');
+  say('status',`📷 อ่านป้ายได้ว่า “${seen||guess}” แต่ไม่พบในข้อมูล ถ้าอ่านผิด แก้รหัสในช่องด้านบนแล้วกดค้นหา`,'err');
 }
 let ocrBusy=false;
 async function doOCR(){
