@@ -13,6 +13,7 @@
   --bg:#eef2f7; --surface:#ffffff; --fg:#14202e; --muted:#5b6b7e; --line:#d5dde8;
   --frame:#1f5fae; --frame-ink:#ffffff; --plate:#ffffff; --plate-ink:#0b0f14;
   --ok:#1a7f4b; --warn:#a15c00; --danger:#b42318;
+  --l1-bg:#fde68a; --l1-fg:#5c4500; --l2-bg:#fdba74; --l2-fg:#6b2a00; --off-bg:#fca5a5; --off-fg:#7f1d1d;
   --f-display:"Barlow Condensed","Arial Narrow",sans-serif;
   --f-body:"IBM Plex Sans Thai",system-ui,sans-serif;
   --f-code:"JetBrains Mono",ui-monospace,monospace;
@@ -20,11 +21,11 @@
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#0d141d; --surface:#152130; --fg:#e4ebf3; --muted:#93a4b8; --line:#26364a;
   --frame:#2d6fc0; --frame-ink:#ffffff; --plate:#f4f6f8; --plate-ink:#0b0f14;
-  --ok:#4fc184; --warn:#e3a14a; --danger:#f0806f; color-scheme:dark}}
+  --ok:#4fc184; --warn:#e3a14a; --danger:#f0806f; --l1-bg:#e6c84a; --l1-fg:#2b2100; --l2-bg:#f0954a; --l2-fg:#2e1200; --off-bg:#ef6b6b; --off-fg:#2a0606; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0d141d; --surface:#152130; --fg:#e4ebf3; --muted:#93a4b8; --line:#26364a;
   --frame:#2d6fc0; --frame-ink:#ffffff; --plate:#f4f6f8; --plate-ink:#0b0f14;
-  --ok:#4fc184; --warn:#e3a14a; --danger:#f0806f; color-scheme:dark}
+  --ok:#4fc184; --warn:#e3a14a; --danger:#f0806f; --l1-bg:#e6c84a; --l1-fg:#2b2100; --l2-bg:#f0954a; --l2-fg:#2e1200; --off-bg:#ef6b6b; --off-fg:#2a0606; color-scheme:dark}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.55}
@@ -80,7 +81,6 @@ dl{margin:0;display:grid;grid-template-columns:minmax(110px,38%) 1fr}
 .seg button{background:none;border:0;border-radius:0;padding:11px 6px;white-space:nowrap;font-size:14px;color:var(--muted);font-weight:600;border-bottom:3px solid transparent;margin-bottom:-1px}
 .seg button[aria-selected="true"]{color:var(--frame);border-bottom-color:var(--frame)}
 .seg .n{font-family:var(--f-code);font-size:12px;border-radius:999px;padding:0 7px;margin-left:4px;background:color-mix(in srgb,var(--muted) 16%,transparent)}
-.seg .n.open{background:color-mix(in srgb,var(--danger) 18%,transparent);color:var(--danger)}
 .sum{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line);font-size:13.5px;color:var(--muted)}
 .sum b{color:var(--fg);font-weight:600}
 .tbl{overflow-x:auto;-webkit-overflow-scrolling:touch}
@@ -91,9 +91,21 @@ dl{margin:0;display:grid;grid-template-columns:minmax(110px,38%) 1fr}
 .tbl tr:last-child td{border-bottom:0}
 .tbl td.dm{font-family:var(--f-code);font-weight:700;color:var(--frame)}
 .st{display:inline-block;font-size:12px;font-weight:600;border-radius:999px;padding:1px 9px;white-space:nowrap}
-.st.ok{background:color-mix(in srgb,var(--ok) 15%,transparent);color:var(--ok)}
-.st.warn{background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn)}
-.st.bad{background:color-mix(in srgb,var(--danger) 15%,transparent);color:var(--danger)}
+.st.ok{padding:0;font-weight:500;color:var(--fg)}
+.st.l1{background:var(--l1-bg);color:var(--l1-fg)}
+.st.l2{background:var(--l2-bg);color:var(--l2-fg)}
+.st.off{background:var(--off-bg);color:var(--off-fg)}
+.tbl tr.l1 td{background:color-mix(in srgb,var(--l1-bg) 22%,transparent)}
+.tbl tr.l2 td{background:color-mix(in srgb,var(--l2-bg) 22%,transparent)}
+.tbl tr.off td{background:color-mix(in srgb,var(--off-bg) 22%,transparent)}
+.tbl tr td:first-child{border-left:4px solid transparent}
+.tbl tr.l1 td:first-child{border-left-color:var(--l1-bg)}
+.tbl tr.l2 td:first-child{border-left-color:var(--l2-bg)}
+.tbl tr.off td:first-child{border-left-color:var(--off-bg)}
+.seg .n.l1{background:var(--l1-bg);color:var(--l1-fg)}
+.seg .n.l2{background:var(--l2-bg);color:var(--l2-fg)}
+.seg .n.off{background:var(--off-bg);color:var(--off-fg)}
+.lv{display:inline-flex;align-items:center;gap:5px}
 .empty{padding:18px 14px;color:var(--muted);font-size:14px}
 .kind{font-size:12px;font-weight:600;letter-spacing:.04em;color:var(--frame);text-transform:uppercase}
 dt,dd{padding:9px 14px;border-bottom:1px solid var(--line);margin:0;min-width:0;overflow-wrap:anywhere}
@@ -321,13 +333,17 @@ function statusCols(sh,fks){ // หาคอลัมน์รหัสเคร
     if(k>mc||(k===mc&&k>0&&/เครื่องจักร|machine|equip/i.test(sh.headers[c]))){mc=k;mi=c}}
   if(mi<0)mi=sh.headers.findIndex(h=>/เครื่องจักร|machine|equip/i.test(h));
   if(mi<0)mi=codeIdx(sh);
-  return {mi,matched:mc,di:sh.headers.findIndex(h=>/วันที่พบ|วันที่แจ้ง|report|found/i.test(h)),si:sh.headers.findIndex(h=>/สถานะ|status/i.test(h))};
+  return {mi,matched:mc,di:sh.headers.findIndex(h=>/วันที่เสีย|วันที่พบ|วันที่แจ้ง|report|found/i.test(h)),si:sh.headers.findIndex(h=>/ระดับความเสียหาย|สถานะ|status/i.test(h))};
 }
 function thDate(v){ // "15/11/2567 11:20" → เวลา (รองรับ พ.ศ./ค.ศ.)
   const m=String(v||'').match(/(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})(?:\D+(\d{1,2}):(\d{2}))?/);if(!m)return 0;
   let y=+m[3];if(y<100)y+=y>60?2400:2500;if(y>2400)y-=543;return new Date(y,+m[2]-1,+m[1],+(m[4]||0),+(m[5]||0)).getTime();
 }
-function stClass(v){v=String(v||'');return /ปิด|close|เสร็จ|done|complete/i.test(v)?'ok':/เฝ้าระวัง|watch|monitor|รอ/i.test(v)?'warn':v?'bad':''}
+const LV_ORDER={off:3,l2:2,l1:1,ok:0,'':0};
+function stClass(v){v=String(v||'').trim(); // ระดับความเสียหาย → สี
+  if(!v)return '';if(/ปิดใช้งาน|disable/i.test(v))return 'off';if(/ปิด\s*DM|close|เสร็จ|done|complete/i.test(v))return 'ok';
+  if(/ระดับ\s*1|level\s*1/i.test(v))return 'l1';if(/ระดับ\s*[23]|level\s*[23]/i.test(v))return 'l2';return 'l1'}
+const HIDE_COLS=/^(no\.?|แผนการแก้ไข|รายละเอียด|machine type|สาเหตุการชำรุด)$/i; // คอลัมน์ที่ไม่แสดงในหน้าสถานะ
 function buildStatusIndex(src){
   const S=src||ST,fks=new Set(INDEX.map(e=>e.fk)),idx=new Map();let n=0,matched=0;
   for(const sh of S.sheets){const c=statusCols(sh,fks);sh._c=c;
@@ -345,12 +361,14 @@ function statusHTML(recs){
   let html='';
   for(const [sh,rows] of groups){
     const c=sh._c;if(c.di>=0)rows.sort((a,b)=>thDate(b[c.di])-thDate(a[c.di]));
-    const open=c.si>=0?rows.filter(r=>stClass(r[c.si])!=='ok').length:0,last=rows[0];
-    html+=`<div class="sum"><span>ทั้งหมด <b>${rows.length}</b> รายการ</span>${c.si>=0?`<span>ยังไม่ปิด <b>${open}</b></span><span>ล่าสุด <span class="st ${stClass(last[c.si])}">${esc(last[c.si]||'—')}</span>${c.di>=0&&last[c.di]?` · ${esc(last[c.di])}`:''}</span>`:''}</div>
-     <div class="tbl"><table><thead><tr>${sh.headers.map((h,i)=>i===c.mi?'':`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>
-     ${rows.map(r=>`<tr>${sh.headers.map((h,i)=>{const v=r[i]??'';if(i===c.mi)return '';
+    const cnt={};if(c.si>=0)for(const r of rows){const v=String(r[c.si]||'').trim();if(v)cnt[v]=(cnt[v]||0)+1}
+    const lvls=Object.keys(cnt).sort((a,b)=>LV_ORDER[stClass(b)]-LV_ORDER[stClass(a)]);
+    const show=sh.headers.map((h,i)=>i).filter(i=>i!==c.mi&&!HIDE_COLS.test(String(sh.headers[i]).trim()));
+    html+=`<div class="sum"><span>ทั้งหมด <b>${rows.length}</b> รายการ</span>${lvls.map(v=>`<span class="lv"><span class="st ${stClass(v)}">${esc(v)}</span><b>${cnt[v]}</b></span>`).join('')}</div>
+     <div class="tbl"><table><thead><tr>${show.map(i=>`<th>${esc(sh.headers[i])}</th>`).join('')}</tr></thead><tbody>
+     ${rows.map(r=>`<tr class="${c.si>=0?stClass(r[c.si]):''}">${show.map(i=>{const h=sh.headers[i],v=r[i]??'';
         if(i===c.si)return `<td>${v?`<span class="st ${stClass(v)}">${esc(v)}</span>`:''}</td>`;
-        if(i===0&&/DM|เลขที่/i.test(h))return `<td class="dm">${esc(v)}</td>`;
+        if(/DM/i.test(h)&&/^DM/i.test(v))return `<td class="dm">${esc(v)}</td>`;
         return `<td${String(v).length>24?' class="wrap"':''}>${esc(v)}</td>`}).join('')}</tr>`).join('')}
      </tbody></table></div>`;
   }
@@ -358,12 +376,13 @@ function statusHTML(recs){
 }
 function showOne(e,quiet){
   const items=e.sh.headers.map((h,i)=>[h,e.r[i]]).filter((x,i)=>i!==e.ci&&String(x[1]??'').trim()!=='');
-  const recs=SIDX.get(e.fk)||[],open=recs.filter(x=>x.sh._c.si>=0&&stClass(x.r[x.sh._c.si])!=='ok').length;
+  const recs=SIDX.get(e.fk)||[];let open=0,worst='';
+  for(const x of recs){const k=x.sh._c.si>=0?stClass(x.r[x.sh._c.si]):'';if(k&&k!=='ok'){open++;if(LV_ORDER[k]>LV_ORDER[worst])worst=k}}
   $('out').innerHTML=`<article class="card"><div class="plate"><div class="code">${esc(e.code)}</div></div>
    <div class="meta"><span class="found">✓ พบข้อมูล</span><span class="chip">แท็บ: ${esc(e.sh.name)}</span></div>
    <div class="seg" role="tablist">
      <button type="button" role="tab" data-t="info" aria-selected="${segTab==='info'}">รายละเอียดเครื่องจักร</button>
-     <button type="button" role="tab" data-t="st" aria-selected="${segTab==='st'}">สถานะเครื่องจักร<span class="n${open?' open':''}">${open?open+' ค้าง':recs.length}</span></button>
+     <button type="button" role="tab" data-t="st" aria-selected="${segTab==='st'}">สถานะเครื่องจักร<span class="n ${worst}">${open?open+' ค้าง':recs.length}</span></button>
    </div>
    <div data-p="info"${segTab==='info'?'':' hidden'}><dl>${items.map(([h,v])=>`<dt>${esc(h||'—')}</dt><dd>${esc(v)}</dd>`).join('')}</dl></div>
    <div data-p="st"${segTab==='st'?'':' hidden'}>${statusHTML(recs)}</div></article>`;
