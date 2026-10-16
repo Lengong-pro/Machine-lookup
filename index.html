@@ -76,6 +76,26 @@ button:focus-visible,.btn:focus-visible,input:focus-visible,select:focus-visible
 .chip{font-family:var(--f-code);font-size:12px;border:1px solid var(--line);border-radius:999px;padding:2px 10px;color:var(--fg);white-space:nowrap}
 .found{color:var(--ok);font-weight:600}
 dl{margin:0;display:grid;grid-template-columns:minmax(110px,38%) 1fr}
+.seg{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--line)}
+.seg button{background:none;border:0;border-radius:0;padding:11px 6px;white-space:nowrap;font-size:14px;color:var(--muted);font-weight:600;border-bottom:3px solid transparent;margin-bottom:-1px}
+.seg button[aria-selected="true"]{color:var(--frame);border-bottom-color:var(--frame)}
+.seg .n{font-family:var(--f-code);font-size:12px;border-radius:999px;padding:0 7px;margin-left:4px;background:color-mix(in srgb,var(--muted) 16%,transparent)}
+.seg .n.open{background:color-mix(in srgb,var(--danger) 18%,transparent);color:var(--danger)}
+.sum{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line);font-size:13.5px;color:var(--muted)}
+.sum b{color:var(--fg);font-weight:600}
+.tbl{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tbl table{border-collapse:collapse;font-size:13px;min-width:100%}
+.tbl th{position:sticky;top:0;background:color-mix(in srgb,var(--frame) 10%,var(--surface));color:var(--fg);text-align:left;font-weight:600;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top;white-space:nowrap;font-variant-numeric:tabular-nums}
+.tbl td.wrap{white-space:normal;min-width:180px}
+.tbl tr:last-child td{border-bottom:0}
+.tbl td.dm{font-family:var(--f-code);font-weight:700;color:var(--frame)}
+.st{display:inline-block;font-size:12px;font-weight:600;border-radius:999px;padding:1px 9px;white-space:nowrap}
+.st.ok{background:color-mix(in srgb,var(--ok) 15%,transparent);color:var(--ok)}
+.st.warn{background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn)}
+.st.bad{background:color-mix(in srgb,var(--danger) 15%,transparent);color:var(--danger)}
+.empty{padding:18px 14px;color:var(--muted);font-size:14px}
+.kind{font-size:12px;font-weight:600;letter-spacing:.04em;color:var(--frame);text-transform:uppercase}
 dt,dd{padding:9px 14px;border-bottom:1px solid var(--line);margin:0;min-width:0;overflow-wrap:anywhere}
 dt{color:var(--muted);font-size:13.5px}
 dd{font-weight:500;font-variant-numeric:tabular-nums}
@@ -190,14 +210,29 @@ details ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
       </div></div>
 
       <div class="card"><div class="panel">
-        <h2>นำเข้าไฟล์ Excel ใหม่</h2>
-        <div class="small">แทนที่ข้อมูลทั้งหมดด้วยไฟล์ใหม่ รองรับหลายแท็บ แถวแรกที่มีข้อมูลคือหัวคอลัมน์ ระบบหาคอลัมน์รหัส (ขึ้นต้นด้วย LP) ให้เอง</div>
+        <span class="kind">ไฟล์ที่ 1 · data.json</span>
+        <h2>นำเข้า: รายละเอียดเครื่องจักร</h2>
+        <div class="small">ข้อมูลสเปกของเครื่อง เช่น Main Type, Length, Kw_moter แทนที่ข้อมูลรายละเอียดทั้งหมดด้วยไฟล์ใหม่ ไม่กระทบข้อมูลสถานะ</div>
+        <div class="small" id="a-dinfo"></div>
         <div class="btns">
-          <label class="btn go" for="xl">เลือกไฟล์ Excel / CSV</label>
+          <label class="btn go" for="xl">เลือกไฟล์รายละเอียด</label>
           <input id="xl" type="file" accept=".xlsx,.xls,.csv" hidden>
-          <button class="ghost" type="button" id="dl">ดาวน์โหลดข้อมูลปัจจุบันเป็น Excel</button>
+          <button class="ghost" type="button" id="dl">ดาวน์โหลดเป็น Excel</button>
         </div>
         <div class="status" id="a-xstatus" role="status"></div>
+      </div></div>
+
+      <div class="card"><div class="panel">
+        <span class="kind">ไฟล์ที่ 2 · status.json</span>
+        <h2>นำเข้า: สถานะเครื่องจักร (DM)</h2>
+        <div class="small">ประวัติแจ้งซ่อม เช่น เลขที่ DM, สถานะ, วันที่พบ, อาการ, สาเหตุ ต้องมีคอลัมน์รหัสเครื่องจักร (เช่น “เครื่องจักร”) เพื่อจับคู่กับรายละเอียด แทนที่ข้อมูลสถานะทั้งหมดด้วยไฟล์ใหม่ ไม่กระทบข้อมูลรายละเอียด</div>
+        <div class="small" id="a-sinfo"></div>
+        <div class="btns">
+          <label class="btn go" for="xl2">เลือกไฟล์สถานะ</label>
+          <input id="xl2" type="file" accept=".xlsx,.xls,.csv,.html,.htm" hidden>
+          <button class="ghost" type="button" id="dl2">ดาวน์โหลดเป็น Excel</button>
+        </div>
+        <div class="status" id="a-sstatus" role="status"></div>
       </div></div>
 
       <div class="card">
@@ -239,7 +274,7 @@ const SAMPLE={sample:true,source:'ข้อมูลตัวอย่างจ�
   ['LP201-BHT06-HS055','ICS Tray Straight','3250','PUL','Drive shaft complete low-speed (2.2 KW)','LP201','MTB-West']]},
  {name:'2 Belt',headers:['รหัสตำแหน่ง','ประเภทท่อน','ความยาวสายพาน 1','ความยาวสายพาน 2','ประเภทสายพาน','ประเภทมอเตอร์'],rows:[
   ['LP253-BET81-HS001','ICS Tray Merge/Divert','5350','2740','PUL','Drive Shaft Merge (1.1 KW)']]}]};
-const CKEY='machine-cache-v2',RKEY='machine-recent-v1',GKEY='machine-gh-v1',REPOKEY='machine-repo-v1';
+const CKEY='machine-cache-v2',SKEY='machine-status-cache-v1',RKEY='machine-recent-v1',GKEY='machine-gh-v1',REPOKEY='machine-repo-v1';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const norm=s=>String(s??'').toUpperCase().trim().replace(/[\s._\-\/,]+/g,'-').replace(/^-|-$/g,'');
@@ -249,7 +284,7 @@ const ls={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k
 const ss={get(k){try{return sessionStorage.getItem(k)}catch(e){return null}},set(k,v){try{sessionStorage.setItem(k,v)}catch(e){}},del(k){try{sessionStorage.removeItem(k)}catch(e){}}};
 function say(id,t,kind){const el=$(id);el.textContent=t||'';el.className='status'+(kind?' '+kind:'')}
 
-let DB=SAMPLE,INDEX=[],draft=null,dirty=0,GH=null,sel=null;
+let DB=SAMPLE,INDEX=[],draft=null,dirty=0,GH=null,sel=null,ST={sheets:[]},SIDX=new Map(),draftS=null,dirtyS=0,segTab='info';
 
 /* ---------- data ---------- */
 function codeIdx(sh){
@@ -262,27 +297,79 @@ function buildIndex(){
   INDEX=[];
   for(const sh of DB.sheets){const ci=codeIdx(sh);for(const r of sh.rows){const code=norm(r[ci]);if(code)INDEX.push({sh,r,ci,code,fk:fkey(code)})}}
   const when=DB.updatedAt?new Date(DB.updatedAt).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'}):'';
-  $('dbfoot').innerHTML=`${INDEX.length.toLocaleString()} รายการ · ${DB.sheets.length} แท็บ${when?' · อัปเดต '+esc(when):''}${DB.sample?'<span class="tag-sample">ข้อมูลตัวอย่าง</span>':''}`;
+  buildStatusIndex();
+  const sw=ST.updatedAt?new Date(ST.updatedAt).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'}):'';
+  $('dbfoot').innerHTML=`รายละเอียด ${INDEX.length.toLocaleString()} เครื่อง${when?' · อัปเดต '+esc(when):''}${ST.sheets.length?`<br>สถานะ DM ${ST.sheets.reduce((n,s)=>n+s.rows.length,0).toLocaleString()} รายการ${sw?' · อัปเดต '+esc(sw):''}`:''}${DB.sample?'<span class="tag-sample">ข้อมูลตัวอย่าง</span>':''}`;
+}
+async function getJSON(name,key){
+  try{const r=await fetch(name+'?t='+Date.now(),{cache:'no-store'});
+    if(r.status===404)return {missing:true};if(!r.ok)throw 0;
+    const j=await r.json();if(!j.sheets)throw 0;ls.set(key,JSON.stringify(j));return j}
+  catch(e){const c=ls.get(key);if(c){try{return {...JSON.parse(c),offline:true}}catch(_){}}return null}
 }
 async function loadData(){
-  try{
-    const r=await fetch('data.json?t='+Date.now(),{cache:'no-store'});
-    if(!r.ok)throw 0;
-    const j=await r.json();if(!j.sheets)throw 0;
-    DB=j;ls.set(CKEY,JSON.stringify(j));
-  }catch(e){
-    const c=ls.get(CKEY);
-    if(c){try{DB=JSON.parse(c);say('status','ออฟไลน์อยู่ ใช้ข้อมูลชุดล่าสุดที่เคยโหลดไว้','err')}catch(_){}}
-  }
+  const [d,st]=await Promise.all([getJSON('data.json',CKEY),getJSON('status.json',SKEY)]);
+  if(d&&!d.missing)DB=d;
+  if(st&&!st.missing)ST=st;
+  if((d&&d.offline)||(st&&st.offline))say('status','ออฟไลน์อยู่ ใช้ข้อมูลชุดล่าสุดที่เคยโหลดไว้','err');
   buildIndex();
+}
+/* ---------- สถานะเครื่องจักร (DM) ---------- */
+function statusCols(sh,fks){ // หาคอลัมน์รหัสเครื่องจักร / วันที่ / สถานะ ในไฟล์สถานะ
+  let mi=-1,mc=0;
+  for(let c=0;c<sh.headers.length;c++){let k=0;for(const r of sh.rows)if(fks.has(fkey(r[c])))k++;
+    if(k>mc||(k===mc&&k>0&&/เครื่องจักร|machine|equip/i.test(sh.headers[c]))){mc=k;mi=c}}
+  if(mi<0)mi=sh.headers.findIndex(h=>/เครื่องจักร|machine|equip/i.test(h));
+  if(mi<0)mi=codeIdx(sh);
+  return {mi,matched:mc,di:sh.headers.findIndex(h=>/วันที่พบ|วันที่แจ้ง|report|found/i.test(h)),si:sh.headers.findIndex(h=>/สถานะ|status/i.test(h))};
+}
+function thDate(v){ // "15/11/2567 11:20" → เวลา (รองรับ พ.ศ./ค.ศ.)
+  const m=String(v||'').match(/(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})(?:\D+(\d{1,2}):(\d{2}))?/);if(!m)return 0;
+  let y=+m[3];if(y<100)y+=y>60?2400:2500;if(y>2400)y-=543;return new Date(y,+m[2]-1,+m[1],+(m[4]||0),+(m[5]||0)).getTime();
+}
+function stClass(v){v=String(v||'');return /ปิด|close|เสร็จ|done|complete/i.test(v)?'ok':/เฝ้าระวัง|watch|monitor|รอ/i.test(v)?'warn':v?'bad':''}
+function buildStatusIndex(src){
+  const S=src||ST,fks=new Set(INDEX.map(e=>e.fk)),idx=new Map();let n=0,matched=0;
+  for(const sh of S.sheets){const c=statusCols(sh,fks);sh._c=c;
+    for(const r of sh.rows){const k=fkey(r[c.mi]);if(!k)continue;n++;if(fks.has(k))matched++;
+      if(!idx.has(k))idx.set(k,[]);idx.get(k).push({sh,r})}}
+  if(!src)SIDX=idx;
+  return {n,matched,cols:S.sheets.map(sh=>sh.headers[sh._c.mi]).filter(Boolean)};
 }
 
 /* ---------- search (หน้าบ้าน) ---------- */
+function statusHTML(recs){
+  if(!ST.sheets.length)return '<div class="empty">ยังไม่มีข้อมูลสถานะในระบบ ผู้ดูแลนำเข้าได้ที่แท็บ Admin</div>';
+  if(!recs.length)return '<div class="empty">✓ ไม่มีประวัติแจ้งซ่อม (DM) ของเครื่องนี้</div>';
+  const groups=new Map();for(const x of recs){if(!groups.has(x.sh))groups.set(x.sh,[]);groups.get(x.sh).push(x.r)}
+  let html='';
+  for(const [sh,rows] of groups){
+    const c=sh._c;if(c.di>=0)rows.sort((a,b)=>thDate(b[c.di])-thDate(a[c.di]));
+    const open=c.si>=0?rows.filter(r=>stClass(r[c.si])!=='ok').length:0,last=rows[0];
+    html+=`<div class="sum"><span>ทั้งหมด <b>${rows.length}</b> รายการ</span>${c.si>=0?`<span>ยังไม่ปิด <b>${open}</b></span><span>ล่าสุด <span class="st ${stClass(last[c.si])}">${esc(last[c.si]||'—')}</span>${c.di>=0&&last[c.di]?` · ${esc(last[c.di])}`:''}</span>`:''}</div>
+     <div class="tbl"><table><thead><tr>${sh.headers.map((h,i)=>i===c.mi?'':`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>
+     ${rows.map(r=>`<tr>${sh.headers.map((h,i)=>{const v=r[i]??'';if(i===c.mi)return '';
+        if(i===c.si)return `<td>${v?`<span class="st ${stClass(v)}">${esc(v)}</span>`:''}</td>`;
+        if(i===0&&/DM|เลขที่/i.test(h))return `<td class="dm">${esc(v)}</td>`;
+        return `<td${String(v).length>24?' class="wrap"':''}>${esc(v)}</td>`}).join('')}</tr>`).join('')}
+     </tbody></table></div>`;
+  }
+  return html;
+}
 function showOne(e,quiet){
   const items=e.sh.headers.map((h,i)=>[h,e.r[i]]).filter((x,i)=>i!==e.ci&&String(x[1]??'').trim()!=='');
+  const recs=SIDX.get(e.fk)||[],open=recs.filter(x=>x.sh._c.si>=0&&stClass(x.r[x.sh._c.si])!=='ok').length;
   $('out').innerHTML=`<article class="card"><div class="plate"><div class="code">${esc(e.code)}</div></div>
    <div class="meta"><span class="found">✓ พบข้อมูล</span><span class="chip">แท็บ: ${esc(e.sh.name)}</span></div>
-   <dl>${items.map(([h,v])=>`<dt>${esc(h||'—')}</dt><dd>${esc(v)}</dd>`).join('')}</dl></article>`;
+   <div class="seg" role="tablist">
+     <button type="button" role="tab" data-t="info" aria-selected="${segTab==='info'}">รายละเอียดเครื่องจักร</button>
+     <button type="button" role="tab" data-t="st" aria-selected="${segTab==='st'}">สถานะเครื่องจักร<span class="n${open?' open':''}">${open?open+' ค้าง':recs.length}</span></button>
+   </div>
+   <div data-p="info"${segTab==='info'?'':' hidden'}><dl>${items.map(([h,v])=>`<dt>${esc(h||'—')}</dt><dd>${esc(v)}</dd>`).join('')}</dl></div>
+   <div data-p="st"${segTab==='st'?'':' hidden'}>${statusHTML(recs)}</div></article>`;
+  $('out').querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{segTab=b.dataset.t;
+    $('out').querySelectorAll('.seg button').forEach(x=>x.setAttribute('aria-selected',x===b));
+    $('out').querySelectorAll('[data-p]').forEach(p=>p.hidden=p.dataset.p!==segTab)});
   if(!quiet)addRecent(e.code);
 }
 function showList(list,q){
@@ -681,7 +768,7 @@ function route(){
   $('t-search').toggleAttribute('aria-current',!admin);$('t-admin').toggleAttribute('aria-current',admin);
   if(admin){$('t-admin').setAttribute('aria-current','page')}else{$('t-search').setAttribute('aria-current','page')}
   $('sub').textContent=admin?'สำหรับผู้ดูแล: นำเข้า แก้ไข และเผยแพร่ข้อมูลให้ทุกคน':'พิมพ์รหัส หรือถ่ายรูปป้ายบนเครื่อง ระบบจะแสดงข้อมูลออกมา';
-  $('pubbar').hidden=!(admin&&dirty>0);
+  $('pubbar').hidden=!(admin&&(dirty+dirtyS)>0);
 }
 window.addEventListener('hashchange',route);
 
@@ -692,7 +779,7 @@ function guessRepo(){
   return p&&!p.includes('.')?`${m[1]}/${p}`:`${m[1]}/${m[1]}.github.io`;
 }
 async function gh(path,opt={}){
-  const r=await fetch('https://api.github.com'+path,{...opt,headers:{Authorization:'Bearer '+GH.token,Accept:'application/vnd.github+json','Content-Type':'application/json'}});
+  const r=await fetch('https://api.github.com'+path,{...opt,headers:{Authorization:'Bearer '+GH.token,Accept:'application/vnd.github+json','Content-Type':'application/json',...(opt.headers||{})}});
   const j=await r.json().catch(()=>({}));
   if(!r.ok){const e=new Error(j.message||('HTTP '+r.status));e.status=r.status;throw e}
   return j;
@@ -717,14 +804,14 @@ $('login').onclick=async()=>{
   }finally{$('login').disabled=false}
 };
 $('logout').onclick=()=>{
-  if(dirty&&!$('logout').dataset.sure){$('logout').dataset.sure=1;$('logout').textContent='ยังไม่เผยแพร่ กดอีกครั้งเพื่อออก';return}
-  GH=null;ss.del(GKEY);draft=null;dirty=0;sel=null;delete $('logout').dataset.sure;$('logout').textContent='ออกจากระบบ';
+  if((dirty+dirtyS)&&!$('logout').dataset.sure){$('logout').dataset.sure=1;$('logout').textContent='ยังไม่เผยแพร่ กดอีกครั้งเพื่อออก';return}
+  GH=null;ss.del(GKEY);draft=null;dirty=0;draftS=null;dirtyS=0;sel=null;delete $('logout').dataset.sure;$('logout').textContent='ออกจากระบบ';
   $('a-main').hidden=true;$('a-login').hidden=false;route();
 };
 function enterAdmin(){
   $('a-login').hidden=true;$('a-main').hidden=false;
   $('a-who').textContent=GH.login;
-  draft=clone(DB);delete draft.sample;dirty=0;sel=null;
+  draft=clone(DB);delete draft.sample;dirty=0;sel=null;draftS=clone({sheets:ST.sheets.map(s=>({name:s.name,headers:s.headers,rows:s.rows})),source:ST.source});dirtyS=0;
   renderAdmin();route();
 }
 function renderAdmin(){
@@ -734,7 +821,12 @@ function renderAdmin(){
   $('sheet').innerHTML=draft.sheets.map((s,i)=>`<option value="${i}">${esc(s.name)} (${s.rows.length})</option>`).join('');
   if(cur&&draft.sheets[cur])$('sheet').value=cur;
   renderList();renderForm();
-  $('pubtxt').textContent=`มีการแก้ไข ${dirty} ครั้งที่ยังไม่เผยแพร่`;
+  const dn=draft.sheets.reduce((n,s)=>n+s.rows.length,0),sn=draftS.sheets.reduce((n,s)=>n+s.rows.length,0);
+  $('a-dinfo').textContent=`ตอนนี้: ${draft.sheets.length} แท็บ · ${dn.toLocaleString()} รายการ${dirty?' · มีการแก้ไขที่ยังไม่เผยแพร่':''}`;
+  if(sn){const r=buildStatusIndex(draftS);$('a-sinfo').textContent=`ตอนนี้: ${sn.toLocaleString()} รายการ · จับคู่กับเครื่องจักรได้ ${r.matched.toLocaleString()} รายการ (คอลัมน์รหัส: ${[...new Set(r.cols)].join(', ')})${dirtyS?' · ยังไม่เผยแพร่':''}`}
+  else $('a-sinfo').textContent='ตอนนี้: ยังไม่มีข้อมูลสถานะ';
+  const parts=[];if(dirty)parts.push('รายละเอียด');if(dirtyS)parts.push('สถานะ');
+  $('pubtxt').textContent=`มีการแก้ไข${parts.join(' และ ')}ที่ยังไม่เผยแพร่`;
   route();
 }
 function renderList(){
@@ -774,44 +866,54 @@ $('sheet').onchange=()=>{sel=null;renderList();renderForm()};
 $('af').oninput=renderList;
 $('add').onclick=()=>{sel={si:+$('sheet').value||0,ri:-1};renderList();renderForm();$('aform').scrollIntoView({block:'nearest',behavior:'smooth'})};
 
-$('xl').addEventListener('change',async e=>{
-  const file=e.target.files[0];e.target.value='';if(!file)return;
-  if(!window.XLSX){say('a-xstatus','โหลดตัวอ่าน Excel ไม่สำเร็จ ตรวจอินเทอร์เน็ตแล้วลองใหม่','err');return}
-  say('a-xstatus','กำลังอ่านไฟล์…');
-  try{
-    const wb=XLSX.read(await file.arrayBuffer(),{type:'array'});const sheets=[];
-    for(const name of wb.SheetNames){
-      const rows=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,defval:'',raw:false});
-      const hi=rows.findIndex(r=>r.filter(c=>String(c).trim()!=='').length>=2);if(hi<0)continue;
-      const headers=rows[hi].map(h=>String(h).trim());
-      const data=rows.slice(hi+1).filter(r=>r.some(c=>String(c).trim()!=='')).map(r=>headers.map((_,i)=>String(r[i]??'').trim()));
-      if(data.length)sheets.push({name,headers,rows:data});
-    }
-    if(!sheets.length)throw 0;
-    draft={source:file.name,sheets};sel=null;dirty++;renderAdmin();
-    say('a-xstatus',`อ่าน ${file.name} แล้ว: ${sheets.length} แท็บ ${sheets.reduce((n,s)=>n+s.rows.length,0).toLocaleString()} รายการ ตรวจดูแล้วกดเผยแพร่`,'good');
-  }catch(err){say('a-xstatus','อ่านไฟล์ไม่ได้ ตรวจว่าเป็น .xlsx หรือ .csv และมีหัวคอลัมน์','err')}
+async function readBook(file){
+  const wb=XLSX.read(await file.arrayBuffer(),{type:'array'});const sheets=[];
+  for(const name of wb.SheetNames){
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,defval:'',raw:false});
+    const hi=rows.findIndex(r=>r.filter(c=>String(c).trim()!=='').length>=2);if(hi<0)continue;
+    const headers=rows[hi].map(h=>String(h).replace(/\s+/g,' ').trim());
+    const data=rows.slice(hi+1).filter(r=>r.some(c=>String(c).trim()!=='')).map(r=>headers.map((_,i)=>String(r[i]??'').trim()));
+    if(data.length)sheets.push({name,headers,rows:data});
+  }
+  if(!sheets.length)throw new Error('empty');return sheets;
+}
+function bindImport(inputId,statusId,apply){
+  $(inputId).addEventListener('change',async e=>{
+    const file=e.target.files[0];e.target.value='';if(!file)return;
+    if(!window.XLSX){say(statusId,'โหลดตัวอ่าน Excel ไม่สำเร็จ ตรวจอินเทอร์เน็ตแล้วลองใหม่','err');return}
+    say(statusId,'กำลังอ่านไฟล์…');
+    try{const sheets=await readBook(file);apply(file,sheets);
+      say(statusId,`อ่าน ${file.name} แล้ว: ${sheets.length} แท็บ ${sheets.reduce((n,s)=>n+s.rows.length,0).toLocaleString()} รายการ ตรวจดูแล้วกด “เผยแพร่ให้ทุกคน”`,'good')}
+    catch(err){console.error(err);say(statusId,'อ่านไฟล์ไม่ได้ ตรวจว่าเป็น .xlsx หรือ .csv และมีหัวคอลัมน์','err')}
+  });
+}
+bindImport('xl','a-xstatus',(file,sheets)=>{draft={source:file.name,sheets};sel=null;dirty++;renderAdmin()});
+bindImport('xl2','a-sstatus',(file,sheets)=>{
+  const r=buildStatusIndex({sheets});
+  draftS={source:file.name,sheets:sheets.map(s=>({name:s.name,headers:s.headers,rows:s.rows}))};dirtyS++;renderAdmin();
+  if(!r.matched)setTimeout(()=>say('a-sstatus',`อ่านไฟล์แล้ว แต่จับคู่รหัสกับรายละเอียดเครื่องจักรไม่ได้เลย ตรวจว่ามีคอลัมน์รหัสเครื่องจักรเต็ม เช่น LP252-BHT51-HS001 และไม่ได้เลือกไฟล์ผิดประเภท`,'err'),0);
 });
-$('dl').onclick=()=>{
-  try{
-    const wb=XLSX.utils.book_new();
-    for(const s of draft.sheets)XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([s.headers,...s.rows]),s.name.slice(0,31));
-    XLSX.writeFile(wb,'machine-data.xlsx');
-  }catch(e){say('a-xstatus','ดาวน์โหลดไม่ได้ในหน้านี้','err')}
-};
-$('discard').onclick=()=>{draft=clone(DB);delete draft.sample;dirty=0;sel=null;renderAdmin()};
+function downloadBook(sheets,name,statusId){
+  try{const wb=XLSX.utils.book_new();
+    for(const s of sheets)XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([s.headers,...s.rows]),s.name.slice(0,31));
+    XLSX.writeFile(wb,name)}catch(e){say(statusId,'ดาวน์โหลดไม่ได้ในหน้านี้','err')}
+}
+$('dl').onclick=()=>downloadBook(draft.sheets,'machine-data.xlsx','a-xstatus');
+$('dl2').onclick=()=>{if(!draftS.sheets.length){say('a-sstatus','ยังไม่มีข้อมูลสถานะให้ดาวน์โหลด','err');return}downloadBook(draftS.sheets,'machine-status.xlsx','a-sstatus')};
+$('discard').onclick=()=>{draft=clone(DB);delete draft.sample;dirty=0;sel=null;draftS={sheets:ST.sheets.map(s=>({name:s.name,headers:s.headers,rows:s.rows})),source:ST.source};dirtyS=0;renderAdmin()};
 $('publish').onclick=async()=>{
   const b=$('publish');b.disabled=true;b.textContent='กำลังเผยแพร่…';
+  const put=async(path,src,msg)=>{
+    const out={source:src.source||path,updatedAt:new Date().toISOString(),updatedBy:GH.login,sheets:src.sheets.map(s=>({name:s.name,headers:s.headers,rows:s.rows}))};
+    let sha;try{sha=(await gh(`/repos/${GH.repo}/contents/${path}`,{headers:{Accept:'application/vnd.github.object'}})).sha}catch(e){if(e.status!==404)throw e}
+    await gh(`/repos/${GH.repo}/contents/${path}`,{method:'PUT',body:JSON.stringify({message:`${msg} โดย ${GH.login}`,content:b64(JSON.stringify(out)),sha})});
+    return out;
+  };
   try{
-    const out={source:draft.source||'data.json',updatedAt:new Date().toISOString(),updatedBy:GH.login,
-      sheets:draft.sheets.map(s=>({name:s.name,headers:s.headers,rows:s.rows}))};
-    const json=JSON.stringify(out,null,1);
-    let sha;try{sha=(await gh(`/repos/${GH.repo}/contents/data.json`)).sha}catch(e){if(e.status!==404)throw e}
-    await gh(`/repos/${GH.repo}/contents/data.json`,{method:'PUT',body:JSON.stringify({message:`อัปเดตข้อมูลเครื่องจักร โดย ${GH.login}`,content:b64(json),sha})});
-    DB=out;ls.set(CKEY,JSON.stringify(out));buildIndex();
-    draft=clone(DB);dirty=0;renderAdmin();
-    say('a-xstatus','เผยแพร่แล้ว ทุกคนจะเห็นข้อมูลใหม่ภายใน 1–2 นาที','good');
-  }catch(e){
+    if(dirty){DB=await put('data.json',draft,'อัปเดตรายละเอียดเครื่องจักร');ls.set(CKEY,JSON.stringify(DB));dirty=0;say('a-xstatus','เผยแพร่รายละเอียดแล้ว ทุกคนจะเห็นภายใน 1–2 นาที','good')}
+    if(dirtyS){ST=await put('status.json',draftS,'อัปเดตสถานะเครื่องจักร (DM)');ls.set(SKEY,JSON.stringify(ST));dirtyS=0;say('a-sstatus','เผยแพร่สถานะแล้ว ทุกคนจะเห็นภายใน 1–2 นาที','good')}
+    buildIndex();draft=clone(DB);delete draft.sample;draftS={sheets:ST.sheets.map(s=>({name:s.name,headers:s.headers,rows:s.rows})),source:ST.source};renderAdmin();
+  }catch(e){renderAdmin();
     say('a-xstatus',e.status===409?'มีคนอื่นเพิ่งเผยแพร่ก่อนหน้า โหลดหน้าใหม่แล้วแก้อีกครั้ง':e.status===403||e.status===404?'token นี้ไม่มีสิทธิ์เขียน ตรวจว่าตั้ง Contents เป็น Read and write':'เผยแพร่ไม่สำเร็จ: '+e.message,'err');
     $('v-admin').scrollIntoView({behavior:'smooth'});
   }finally{b.disabled=false;b.textContent='เผยแพร่ให้ทุกคน'}
