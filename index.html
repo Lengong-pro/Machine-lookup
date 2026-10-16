@@ -299,7 +299,7 @@ function loadScript(src){return new Promise((ok,no)=>{const s=document.createEle
 /* ---------- OCR: อ่านรหัสจากรูป ---------- */
 const CONF={O:'0',Q:'0',D:'0',U:'0',I:'1',L:'1',T:'1',J:'1',S:'5',B:'8',Z:'2',G:'6'};
 const conf=s=>s.replace(/[A-Z]/g,c=>CONF[c]||c);
-const SIM=new Set();['0ODQUC','1ILTJ7','58SB3','2Z7','6G','4A','PR'].forEach(g=>{for(const a of g)for(const b of g)SIM.add(a+b)});
+const SIM=new Set();['0ODQUC','1ILTJ7','58SB','2Z7','6G','4A','PR'].forEach(g=>{for(const a of g)for(const b of g)SIM.add(a+b)});
 const subCost=(a,b)=>a===b?0:SIM.has(a+b)?.4:1;
 function subDist(p,t){ // ระยะห่างแบบหา p ที่ไหนก็ได้ใน t (อนุโลมตัวอักษรผิด/ขาด/เกิน)
   const m=p.length,n=t.length;let prev=new Array(n+1).fill(0),cur=new Array(n+1);
@@ -313,7 +313,7 @@ function matchOCR(text){
   const seen=new Set(),res=[];
   for(const e of INDEX){
     if(seen.has(e.fk))continue;seen.add(e.fk);
-    const p=e.cf||(e.cf=conf(e.fk));let d=99;
+    const p=e.cf||(e.cf=conf(/^LP\d/.test(e.fk)?e.fk.slice(2):e.fk));let d=99;
     for(const c of cands){const x=subDist(p,c);if(x<d)d=x;if(!d)break}
     res.push({e,d});
   }
@@ -393,39 +393,119 @@ function findLabels(img){ // หาป้ายสีขาวรูปสี่
   return res.map(r=>({rot:1,auto:1,...r}));
 }
 let ocrImg=null,ocrBox=null;
+/* ---- เตรียมแถบตัวอักษรบนป้าย: หมุนให้ตรง → ขาวดำแบบปรับตามแสง → ตัดเฉพาะตัวอักษร → แก้ตัวเอียง ---- */
+function grayOf(cv){const x=cv.getContext('2d',{willReadFrequently:true}),d=x.getImageData(0,0,cv.width,cv.height).data,g=new Float32Array(cv.width*cv.height);
+  for(let i=0,k=0;k<g.length;i+=4,k++)g[k]=.299*d[i]+.587*d[i+1]+.114*d[i+2];return g}
+function adaptive(g,W,H,win,kf){ // 1 = หมึก (มืดกว่าค่าเฉลี่ยรอบๆ)
+  const I=new Float64Array((W+1)*(H+1));
+  for(let y=0;y<H;y++){let r=0;for(let x=0;x<W;x++){r+=g[y*W+x];I[(y+1)*(W+1)+x+1]=I[y*(W+1)+x+1]+r}}
+  const m=new Uint8Array(W*H),h=win>>1;
+  for(let y=0;y<H;y++){const y0=Math.max(0,y-h),y1=Math.min(H,y+h+1);for(let x=0;x<W;x++){const x0=Math.max(0,x-h),x1=Math.min(W,x+h+1);
+    const s=I[y1*(W+1)+x1]-I[y0*(W+1)+x1]-I[y1*(W+1)+x0]+I[y0*(W+1)+x0];if(g[y*W+x]<s/((x1-x0)*(y1-y0))*kf)m[y*W+x]=1}}
+  return m;
+}
+function drawRot(src,r,ang,outW){ // วาดพื้นที่ r ของภาพ หมุน ang เรเดียน ขนาดกว้าง outW
+  const k=outW/r.w,c=document.createElement('canvas');c.width=Math.round(r.w*k);c.height=Math.max(8,Math.round(r.h*k));
+  const x=c.getContext('2d',{willReadFrequently:true});x.fillStyle='#888';x.fillRect(0,0,c.width,c.height);
+  x.translate(c.width/2,c.height/2);x.rotate(-ang);x.scale(k,k);x.drawImage(src,-(r.x+r.w/2),-(r.y+r.h/2));return c;
+}
+function skewAngle(src,r){
+  const c=drawRot(src,r,0,360),W=c.width,H=c.height,m=adaptive(grayOf(c),W,H,Math.max(9,(H*.5)|1),.85);
+  let best=0,bv=-1;
+  for(let a=-14;a<=14;a+=1){const t=a*Math.PI/180,ca=Math.cos(t),sa=Math.sin(t),proj=new Float32Array(H*2);
+    for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(m[y*W+x]){const yy=Math.round((y-H/2)*ca-(x-W/2)*sa+H);if(yy>=0&&yy<H*2)proj[yy]++}
+    let s=0,s2=0;for(const v of proj){s+=v;s2+=v*v}const v=s2/proj.length-(s/proj.length)**2;if(v>bv){bv=v;best=t}}
+  return best;
+}
+function textLine(src,r,ang){ // คืน canvas ขาวดำที่มีเฉพาะตัวอักษร (หรือ null)
+  const c=drawRot(src,r,ang,Math.min(1600,Math.max(600,r.w*2))),W=c.width,H=c.height,g=grayOf(c);
+  const out=[];
+  for(const kf of [.78,.86]){
+    const m=adaptive(g,W,H,Math.max(15,(Math.min(H,W/6)*.6)|1),kf);
+    const L=W*.12;for(let y=0;y<H;y++){let x0=-1;for(let x=0;x<=W;x++){const on=x<W&&m[y*W+x];if(on&&x0<0)x0=x;if(!on&&x0>=0){if(x-x0>L)m.fill(0,y*W+x0,y*W+x);x0=-1}}} // ลบเส้นขอบยาวๆ
+    // แถบตัวอักษร = ช่วงแถวที่มีหมึกหนาแน่นติดกันยาวที่สุด
+    const rf=new Float32Array(H);for(let y=0;y<H;y++){let n=0;for(let x=0;x<W;x++)n+=m[y*W+x];rf[y]=n/W}
+    const mx=Math.max(...rf);if(mx<.03)continue;
+    let by0=0,by1=-1,y0=-1;for(let y=0;y<=H;y++){const on=y<H&&rf[y]>Math.max(.04,mx*.25);if(on&&y0<0)y0=y;if(!on&&y0>=0){if(y-y0>by1-by0)[by0,by1]=[y0,y];y0=-1}}
+    const bh=by1-by0;if(bh<6)continue;const mid=(by0+by1)/2;
+    // เก็บเฉพาะชิ้นที่พาดผ่านกลางแถบและสูงพอเป็นตัวอักษร (ตัดเส้น/คราบ/ขอบเหล็กออก)
+    const lab=new Int32Array(W*H);let id=0;const st=[],comps=[];
+    for(let s=0;s<W*H;s++){if(!m[s]||lab[s])continue;id++;const pts=[];st.push(s);lab[s]=id;let x0=W,x1=0,y0b=H,y1b=0;
+      while(st.length){const q=st.pop(),qx=q%W,qy=(q-qx)/W;pts.push(q);if(qx<x0)x0=qx;if(qx>x1)x1=qx;if(qy<y0b)y0b=qy;if(qy>y1b)y1b=qy;
+        for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const nx=qx+dx,ny=qy+dy;if(nx<0||ny<0||nx>=W||ny>=H)continue;const n=ny*W+nx;if(m[n]&&!lab[n]){lab[n]=id;st.push(n)}}}
+      const ch=y1b-y0b+1,cw=x1-x0+1;
+      if(y0b<=mid&&y1b>=mid&&ch>=bh*.45&&ch<=bh*1.9&&cw<=bh*2.2)comps.push({pts,x0,x1,y0:y0b,y1:y1b});
+    }
+    if(!comps.length)continue;
+    const ky0=Math.min(...comps.map(c=>c.y0)),ky1=Math.max(...comps.map(c=>c.y1)),th=ky1-ky0+1,sc=44/th,pad=22;
+    // แบ่งเป็นคำตามช่องว่าง (ตรง . และ _) แล้วแก้ตัวเอียงทีละคำ เพราะบางป้ายมีทั้งตัวตรงและตัวเอียง
+    comps.sort((a,b)=>a.x0-b.x0);const words=[];
+    for(const c of comps){const w=words[words.length-1];if(w&&c.x0-w.x1<=th*.3){w.cs.push(c);w.x1=Math.max(w.x1,c.x1)}else words.push({cs:[c],x0:c.x0,x1:c.x1})}
+    for(const w of words){let bv=-1;w.sh=0;
+      for(let sh=-.1;sh<=.451;sh+=.05){const cols=new Float32Array(w.x1-w.x0+th+2);
+        for(const c of w.cs)for(const q of c.pts){const qx=q%W,qy=(q-qx)/W;cols[qx-w.x0+Math.round(sh*(qy-ky0))+1]++}
+        let v=0;for(const c of cols)v+=c*c;if(v>bv){bv=v;w.sh=sh}}}
+    const gap=th*.45;let total=0;for(const w of words)total+=(w.x1-w.x0+1+th*Math.abs(w.sh))*sc;total+=gap*sc*(words.length-1);
+    const o=document.createElement('canvas');o.width=Math.round(total)+pad*2;o.height=Math.round(th*sc)+pad*2;
+    const ox=o.getContext('2d');ox.fillStyle='#fff';ox.fillRect(0,0,o.width,o.height);let cx=pad;
+    for(const w of words){
+      const t=document.createElement('canvas');t.width=w.x1-w.x0+1;t.height=th;const tx=t.getContext('2d'),im=tx.createImageData(t.width,th);
+      im.data.fill(255);for(const c of w.cs)for(const q of c.pts){const qx=q%W,qy=(q-qx)/W,i=((qy-ky0)*t.width+qx-w.x0)*4;im.data[i]=im.data[i+1]=im.data[i+2]=0}
+      tx.putImageData(im,0,0);
+      ox.setTransform(sc,0,w.sh*sc,sc,cx+(w.sh<0?-w.sh*th*sc:0),pad);ox.drawImage(t,0,0);ox.setTransform(1,0,0,1,0,0);
+      cx+=(w.x1-w.x0+1+th*Math.abs(w.sh))*sc+gap*sc;
+    }
+    out.push(o);
+  }
+  return out;
+}
 async function runOCR(crop){
-  const w=await getWorker();
-  const passes=[];let src=ocrImg;
-  if(crop){ // ตัดเฉพาะกรอบที่ผู้ใช้ลาก แล้วหาป้ายในกรอบนั้นอีกชั้น
-    const k=Math.min(1,2400/Math.max(crop.w,crop.h));src=document.createElement('canvas');
-    src.width=Math.max(1,Math.round(crop.w*k));src.height=Math.max(1,Math.round(crop.h*k));
-    src.getContext('2d').drawImage(ocrImg,crop.x,crop.y,crop.w,crop.h,0,0,src.width,src.height);
+  const w=await getWorker(),src=ocrImg,W0=src.naturalWidth,H0=src.naturalHeight;
+  // หาป้ายในกรอบที่ลาก (หรือทั้งรูป)
+  let labs;
+  if(crop){const k=Math.min(1,2400/Math.max(crop.w,crop.h)),sub=document.createElement('canvas');
+    sub.width=Math.max(1,Math.round(crop.w*k));sub.height=Math.max(1,Math.round(crop.h*k));
+    sub.getContext('2d').drawImage(src,crop.x,crop.y,crop.w,crop.h,0,0,sub.width,sub.height);
+    labs=findLabels(sub).map(l=>({...l,cx:l.cx/k+crop.x,cy:l.cy/k+crop.y,len:l.len/k,wid:l.wid/k}));
+  }else labs=findLabels(src);
+  const jobs=[];
+  const lineJob=(r,ang)=>({make:()=>textLine(src,r,ang==null?skewAngle(src,r):ang),psm:'7'});
+  if(crop)jobs.push(lineJob(crop,null));
+  for(const l of labs){const lw=l.len*1.1,lh=l.wid*1.5;jobs.push(lineJob({x:l.cx-lw/2,y:l.cy-lh/2,w:lw,h:lh},l.angle))}
+  for(const l of labs)jobs.push({make:()=>[prep(src,l,'gray')],psm:'7'});
+  if(!crop)jobs.push(lineJob({x:0,y:0,w:W0,h:H0},null));
+  jobs.push({make:()=>[prep(src,crop||null,'gray')],psm:crop?'6':'11'});
+  // อ่านหลายรอบ แล้วรวมคะแนน (โหวต) ว่ารหัสไหนตรงที่สุด
+  const tot=new Map(),votes=[];let reads=0,bestText='',bestD=99;
+  const rank=()=>[...tot.values()].sort((a,b)=>a.s-b.s);
+  for(let j=0;j<jobs.length;j++){
+    say('status',`กำลังอ่านป้าย… ${Math.round(j/jobs.length*100)}%`);
+    await new Promise(r=>setTimeout(r,0));
+    let imgs=[];try{imgs=jobs[j].make()||[]}catch(e){console.warn(e)}
+    for(let i=0;i<imgs.length;i++){
+      ocrProg=p=>say('status',`กำลังอ่านป้าย… ${Math.round((j+(i+p)/imgs.length)/jobs.length*100)}%`);
+      await w.setParameters({tessedit_pageseg_mode:jobs[j].psm});
+      const {data}=await w.recognize(imgs[i]);
+      const m=matchOCR(data.text);if(!m.length||m[0].d>3)continue;
+      if(m[0].d<bestD){bestD=m[0].d;bestText=data.text.trim()}
+      if(m[0].d<=1.5&&(!m[1]||m[1].d>m[0].d))votes.push(m[0].e.fk);
+      reads++;for(const x of m){const t=tot.get(x.e.fk)||{e:x.e,s:0};t.s+=Math.min(x.d,6);tot.set(x.e.fk,t)}
+      const r=rank();
+      const agree=votes.length>=2&&votes.every(v=>v===r[0].e.fk);
+      if(agree&&r[0].s/reads<=1)return{best:r.map(x=>({e:x.e,d:x.s/reads})),margin:r[1]?r[1].s-r[0].s:9,reads,agree,text:bestText};
+    }
   }
-  for(const r of findLabels(src))passes.push([r,'gray','7'],[r,'bin','7']);
-  passes.push([null,'gray',crop?'7':'11'],[null,'gray','6']);
-  let lastText='',best=null;
-  for(let i=0;i<passes.length;i++){
-    const [area,mode,psm]=passes[i];
-    ocrProg=p=>say('status',`กำลังอ่านป้าย… ${Math.round((i+p)/passes.length*100)}%`);
-    await w.setParameters({tessedit_pageseg_mode:psm});
-    const {data}=await w.recognize(prep(src,area,mode));
-    lastText=data.text.trim()||lastText;
-    const m=matchOCR(data.text);
-    if(m.length&&(!best||m[0].d<best[0].d))best=m;
-    if(best&&best[0].d===0)break;
-    if(best&&best[0].d<=2&&best[1]&&best[1].d>best[0].d)break;
-  }
-  return {best:best||[],text:lastText};
+  const r=rank(),agree=votes.length>=1&&r.length&&votes.every(v=>v===r[0].e.fk);return{best:reads?r.map(x=>({e:x.e,d:x.s/reads})):[],margin:r[1]?r[1].s-r[0].s:9,reads,agree,text:bestText};
 }
 function ocrResult(r){
   const seen=norm(r.text.split('\n').find(l=>/LP/i.test(l))||r.text.split('\n')[0]||'');
   const b=r.best;
-  if(b.length&&b[0].d<=3&&(!b[1]||b[1].d>b[0].d)){
+  if(b.length&&r.agree&&b[0].d<=2&&r.margin>=.4&&(r.reads>=2||b[0].d<=.4)){
     const e=b[0].e;$('q').value=e.code;showOne(e);hideCrop();
-    say('status',b[0].d?`📷 อ่านได้ใกล้เคียง “${seen}” → ${e.code} โปรดตรวจว่าตรงกับป้าย`:`📷 อ่านรหัสได้ว่า: ${e.code}`,b[0].d?'':'good');
+    say('status',b[0].d>.5?`📷 อ่านได้ใกล้เคียง “${seen}” → ${e.code} โปรดตรวจว่าตรงกับป้าย`:`📷 อ่านรหัสได้ว่า: ${e.code}`,b[0].d>.5?'':'good');
     return;
   }
-  const near=b.filter(x=>x.d<=5).slice(0,6);
+  const near=b.filter(x=>x.d<=4.5).slice(0,6);
   if(near.length){
     $('q').value=seen;showList(near.map(x=>x.e),seen||'รูปภาพ');
     $('out').querySelector('.head').textContent=`📷 อ่านได้ไม่ชัด${seen?` (“${seen}”)`:''} · เลือกรหัสที่ตรงกับป้าย`;
