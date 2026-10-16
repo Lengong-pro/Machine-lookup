@@ -108,6 +108,9 @@ details ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
 .pubbar .ghost{background:transparent;color:var(--bg);border-color:color-mix(in srgb,var(--bg) 40%,transparent)}
 .pubbar .primary{background:#2d6fc0;color:#fff}
 @media (prefers-reduced-motion:no-preference){#out .card{animation:in .18s ease-out}@keyframes in{from{transform:translateY(4px);opacity:.6}}}
+.ocr canvas{display:block;width:100%;height:auto;touch-action:none;cursor:crosshair;background:#000}
+.ocrbtns{padding:12px 14px}
+.status.good{color:var(--ok)}
 </style>
 </head>
 <body>
@@ -138,6 +141,11 @@ details ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
     </form>
     <div class="status" id="status" role="status"></div>
     <div id="out"></div>
+    <div class="card ocr" id="ocr" hidden>
+      <div class="head">ลากนิ้วบนรูปเพื่อวาดกรอบให้พอดีกับป้ายรหัส</div>
+      <canvas id="ocv" aria-label="รูปที่ถ่าย ลากเพื่อเลือกบริเวณป้าย"></canvas>
+      <div class="btns ocrbtns"><button class="primary" type="button" id="ocrgo">อ่านรหัสในกรอบ</button><label class="btn ghost" for="photo">ถ่ายใหม่</label><button class="ghost" type="button" id="ocrclose">ปิด</button></div>
+    </div>
     <div class="recent" id="recent"></div>
     <div class="foot" id="dbfoot"></div>
   </section>
@@ -287,24 +295,185 @@ $('f').addEventListener('submit',e=>{e.preventDefault();search($('q').value)});
 let tmr;$('q').addEventListener('input',()=>{clearTimeout(tmr);const v=$('q').value;if(fkey(v).length>=4)tmr=setTimeout(()=>search(v,true),250)});
 
 function loadScript(src){return new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=no;document.head.appendChild(s)})}
-function extractCode(text){
-  const t=text.toUpperCase().replace(/\s+/g,'');
-  const m=t.match(/LP[0-9O]{2,4}[^A-Z0-9]*[A-Z]{2,4}[0-9O]{1,3}[^A-Z0-9]*[A-Z]{1,3}[0-9O]{2,4}/);
-  if(m)return m[0];
-  return text.split('\n').map(s=>s.trim()).find(s=>/[A-Z0-9]{4}/i.test(s))||'';
+
+/* ---------- OCR: อ่านรหัสจากรูป ---------- */
+const CONF={O:'0',Q:'0',D:'0',U:'0',I:'1',L:'1',T:'1',J:'1',S:'5',B:'8',Z:'2',G:'6'};
+const conf=s=>s.replace(/[A-Z]/g,c=>CONF[c]||c);
+const SIM=new Set();['0ODQUC','1ILTJ7','58SB3','2Z7','6G','4A','PR'].forEach(g=>{for(const a of g)for(const b of g)SIM.add(a+b)});
+const subCost=(a,b)=>a===b?0:SIM.has(a+b)?.4:1;
+function subDist(p,t){ // ระยะห่างแบบหา p ที่ไหนก็ได้ใน t (อนุโลมตัวอักษรผิด/ขาด/เกิน)
+  const m=p.length,n=t.length;let prev=new Array(n+1).fill(0),cur=new Array(n+1);
+  for(let i=1;i<=m;i++){cur[0]=i;for(let j=1;j<=n;j++){cur[j]=Math.min(prev[j]+1,cur[j-1]+1,prev[j-1]+subCost(p[i-1],t[j-1]))}[prev,cur]=[cur,prev]}
+  let best=m;for(let j=0;j<=n;j++)if(prev[j]<best)best=prev[j];return best;
+}
+function matchOCR(text){
+  const lines=text.toUpperCase().split(/\n/).map(l=>l.replace(/[^A-Z0-9]/g,'')).filter(l=>l.length>=5);
+  if(!lines.length)return [];
+  const cands=[...new Set([...lines,lines.join('')])].map(conf);
+  const seen=new Set(),res=[];
+  for(const e of INDEX){
+    if(seen.has(e.fk))continue;seen.add(e.fk);
+    const p=e.cf||(e.cf=conf(e.fk));let d=99;
+    for(const c of cands){const x=subDist(p,c);if(x<d)d=x;if(!d)break}
+    res.push({e,d});
+  }
+  res.sort((a,b)=>a.d-b.d);
+  return res;
+}
+let ocrWorker=null,ocrProg=()=>{};
+const withTimeout=(pr,ms)=>Promise.race([pr,new Promise((_,no)=>setTimeout(()=>no(new Error('timeout')),ms))]);
+async function getWorker(){
+  if(ocrWorker)return ocrWorker;
+  const logger=m=>{if(m.status==='recognizing text')ocrProg(m.progress)};
+  if(!window.Tesseract){
+    try{await withTimeout(loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js'),20000)}
+    catch(e){await withTimeout(loadScript('https://unpkg.com/tesseract.js@5.1.1/dist/tesseract.min.js'),20000)}
+  }
+  try{ocrWorker=await withTimeout(Tesseract.createWorker('eng',1,{logger}),60000)}
+  catch(e){ // แหล่งสำรองเมื่อเครือข่ายบล็อก jsDelivr
+    ocrWorker=await withTimeout(Tesseract.createWorker('eng',1,{logger,
+      workerPath:'https://unpkg.com/tesseract.js@5.1.1/dist/worker.min.js',
+      corePath:'https://unpkg.com/tesseract.js-core@5.1.1',
+      langPath:'https://unpkg.com/@tesseract.js-data/eng@1.0.0/4.0.0_best_int'}),60000);
+  }
+  await ocrWorker.setParameters({tessedit_char_whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-'});
+  return ocrWorker;
+}
+function loadImg(file){return new Promise((ok,no)=>{const u=URL.createObjectURL(file),im=new Image();im.onload=()=>ok(im);im.onerror=()=>no(new Error('img'));im.src=u})}
+function prep(img,crop,mode){ // ย่อ/ครอป → ขาวดำ → เพิ่มคอนทราสต์ (mode 'bin' = ตัดเป็นขาว-ดำ)
+  const r=crop||{x:0,y:0,w:img.naturalWidth||img.width,h:img.naturalHeight||img.height};
+  const sc=crop?Math.max(.2,Math.min(4,1400/r.w,160/r.h)):Math.min(1800/r.w,3);
+  const W=Math.max(1,Math.round(r.w*sc)),H=Math.max(1,Math.round(r.h*sc));
+  const c=document.createElement('canvas');let x;
+  if(crop&&crop.rot){ // ตัดชิดขอบป้าย หมุนให้ตรง แล้วเติมขอบขาว
+    const k=Math.max(.3,Math.min(4,140/crop.wid,1600/crop.len)),iw=crop.len*.97*k,ih=crop.wid*.86*k,mg=Math.round(ih*.35);
+    c.width=Math.round(iw+mg*2);c.height=Math.round(ih+mg*2);x=c.getContext('2d',{willReadFrequently:true});
+    x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.save();x.beginPath();x.rect(mg,mg,iw,ih);x.clip();
+    x.translate(c.width/2,c.height/2);x.rotate(-crop.angle);x.scale(k,k);x.drawImage(img,-crop.cx,-crop.cy);x.restore();
+  }else{c.width=W;c.height=H;x=c.getContext('2d',{willReadFrequently:true});x.drawImage(img,r.x,r.y,r.w,r.h,0,0,W,H)}
+  const W2=c.width,H2=c.height;
+  const d=x.getImageData(0,0,W2,H2),p=d.data,g=new Uint8Array(W2*H2),hist=new Array(256).fill(0);
+  for(let i=0,k=0;i<p.length;i+=4,k++){const v=Math.round(.299*p[i]+.587*p[i+1]+.114*p[i+2]);g[k]=v;hist[v]++}
+  let lo=0,hi=255,acc=0;const N=W2*H2;
+  for(;lo<255;lo++){acc+=hist[lo];if(acc>N*.02)break}acc=0;for(;hi>0;hi--){acc+=hist[hi];if(acc>N*.02)break}
+  let th=128;
+  if(mode==='bin'){let sum=0;for(let i=0;i<256;i++)sum+=i*hist[i];let sB=0,wB=0,best=0;
+    for(let t=0;t<256;t++){wB+=hist[t];if(!wB)continue;const wF=N-wB;if(!wF)break;sB+=t*hist[t];const mB=sB/wB,mF=(sum-sB)/wF,v=wB*wF*(mB-mF)**2;if(v>best){best=v;th=t}}}
+  const span=Math.max(1,hi-lo);
+  for(let k=0,i=0;k<N;k++,i+=4){let v=mode==='bin'?(g[k]>th?255:0):Math.max(0,Math.min(255,(g[k]-lo)*255/span));p[i]=p[i+1]=p[i+2]=v}
+  x.putImageData(d,0,0);return c;
+}
+function findLabels(img){ // หาป้ายสีขาวรูปสี่เหลี่ยมผืนผ้าในรูปอัตโนมัติ (รองรับป้ายเอียง)
+  const W0=img.naturalWidth||img.width,H0=img.naturalHeight||img.height,sc=640/Math.max(W0,H0);
+  const W=Math.max(1,Math.round(W0*sc)),H=Math.max(1,Math.round(H0*sc));
+  const c=document.createElement('canvas');c.width=W;c.height=H;
+  const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(img,0,0,W,H);
+  const p=x.getImageData(0,0,W,H).data,N=W*H,g=new Uint8Array(N),sat=new Uint8Array(N),hist=new Array(256).fill(0);
+  for(let i=0,k=0;k<N;i+=4,k++){const r=p[i],gg=p[i+1],b=p[i+2];g[k]=(.299*r+.587*gg+.114*b)|0;sat[k]=Math.max(r,gg,b)-Math.min(r,gg,b);hist[g[k]]++}
+  let sum=0;for(let i=0;i<256;i++)sum+=i*hist[i];let sB=0,wB=0,best=0,th=160;
+  for(let t=0;t<256;t++){wB+=hist[t];if(!wB)continue;const wF=N-wB;if(!wF)break;sB+=t*hist[t];const v=wB*wF*(sB/wB-(sum-sB)/wF)**2;if(v>best){best=v;th=t}}
+  const out=[];
+  for(const T of [th,Math.max(th,150),Math.max(th,190)]){
+    const m=new Uint8Array(N);for(let k=0;k<N;k++)m[k]=g[k]>T&&sat[k]<90?1:0;
+    const lab=new Int32Array(N),st=[];let id=0;
+    for(let s=0;s<N;s++){if(!m[s]||lab[s])continue;id++;let x0=W,y0=H,x1=0,y1=0,a=0,sx=0,sy=0,sxx=0,syy=0,sxy=0;st.push(s);lab[s]=id;
+      while(st.length){const q=st.pop(),qx=q%W,qy=(q-qx)/W;a++;sx+=qx;sy+=qy;sxx+=qx*qx;syy+=qy*qy;sxy+=qx*qy;
+        if(qx<x0)x0=qx;if(qx>x1)x1=qx;if(qy<y0)y0=qy;if(qy>y1)y1=qy;
+        for(const n of [qx>0?q-1:-1,qx<W-1?q+1:-1,q-W,q+W])if(n>=0&&n<N&&m[n]&&!lab[n]){lab[n]=id;st.push(n)}}
+      if(a<40||x1-x0+1>=W*.98)continue;
+      const mx=sx/a,my=sy/a,cxx=sxx/a-mx*mx,cyy=syy/a-my*my,cxy=sxy/a-mx*my;
+      const ang=.5*Math.atan2(2*cxy,cxx-cyy),tr=(cxx+cyy)/2,dd=Math.sqrt(((cxx-cyy)/2)**2+cxy*cxy);
+      const len=Math.sqrt(12*(tr+dd)),wid=Math.sqrt(12*Math.max(tr-dd,.01)),ar=len/wid,fill=a/(len*wid);
+      if(ar>=1.8&&ar<=16&&len>=W*.1&&wid>=5&&fill>=.4&&Math.abs(ang)<.6)
+        out.push({cx:mx/sc,cy:my/sc,len:len/sc,wid:wid/sc,angle:ang,score:a*Math.min(1,fill/.7)});
+    }
+  }
+  out.sort((a,b)=>b.score-a.score);
+  const res=[];for(const r of out){if(res.some(o=>Math.abs(o.cx-r.cx)<o.len*.2&&Math.abs(o.cy-r.cy)<o.wid*.5))continue;res.push(r);if(res.length>=3)break}
+  return res.map(r=>({rot:1,auto:1,...r}));
+}
+let ocrImg=null,ocrBox=null;
+async function runOCR(crop){
+  const w=await getWorker();
+  const passes=[];let src=ocrImg;
+  if(crop){ // ตัดเฉพาะกรอบที่ผู้ใช้ลาก แล้วหาป้ายในกรอบนั้นอีกชั้น
+    const k=Math.min(1,2400/Math.max(crop.w,crop.h));src=document.createElement('canvas');
+    src.width=Math.max(1,Math.round(crop.w*k));src.height=Math.max(1,Math.round(crop.h*k));
+    src.getContext('2d').drawImage(ocrImg,crop.x,crop.y,crop.w,crop.h,0,0,src.width,src.height);
+  }
+  for(const r of findLabels(src))passes.push([r,'gray','7'],[r,'bin','7']);
+  passes.push([null,'gray',crop?'7':'11'],[null,'gray','6']);
+  let lastText='',best=null;
+  for(let i=0;i<passes.length;i++){
+    const [area,mode,psm]=passes[i];
+    ocrProg=p=>say('status',`กำลังอ่านป้าย… ${Math.round((i+p)/passes.length*100)}%`);
+    await w.setParameters({tessedit_pageseg_mode:psm});
+    const {data}=await w.recognize(prep(src,area,mode));
+    lastText=data.text.trim()||lastText;
+    const m=matchOCR(data.text);
+    if(m.length&&(!best||m[0].d<best[0].d))best=m;
+    if(best&&best[0].d===0)break;
+    if(best&&best[0].d<=2&&best[1]&&best[1].d>best[0].d)break;
+  }
+  return {best:best||[],text:lastText};
+}
+function ocrResult(r){
+  const seen=norm(r.text.split('\n').find(l=>/LP/i.test(l))||r.text.split('\n')[0]||'');
+  const b=r.best;
+  if(b.length&&b[0].d<=3&&(!b[1]||b[1].d>b[0].d)){
+    const e=b[0].e;$('q').value=e.code;showOne(e);hideCrop();
+    say('status',b[0].d?`📷 อ่านได้ใกล้เคียง “${seen}” → ${e.code} โปรดตรวจว่าตรงกับป้าย`:`📷 อ่านรหัสได้ว่า: ${e.code}`,b[0].d?'':'good');
+    return;
+  }
+  const near=b.filter(x=>x.d<=5).slice(0,6);
+  if(near.length){
+    $('q').value=seen;showList(near.map(x=>x.e),seen||'รูปภาพ');
+    $('out').querySelector('.head').textContent=`📷 อ่านได้ไม่ชัด${seen?` (“${seen}”)`:''} · เลือกรหัสที่ตรงกับป้าย`;
+    say('status','ถ้าไม่มีรหัสที่ถูก ลากกรอบให้พอดีกับป้ายในรูปด้านล่างแล้วกดอ่านอีกครั้ง');showCrop();return;
+  }
+  $('out').innerHTML='';
+  say('status',`อ่านรหัสจากรูปไม่ได้${seen?` (ระบบอ่านได้ “${seen}”)`:''} ลากกรอบให้พอดีกับป้ายในรูปด้านล่าง แล้วกด “อ่านรหัสในกรอบ”`,'err');
+  showCrop();
+}
+function drawCrop(){
+  const cv=$('ocv'),ctx=cv.getContext('2d'),s=cv.width/ocrImg.naturalWidth;
+  ctx.drawImage(ocrImg,0,0,cv.width,cv.height);
+  if(ocrBox){const b=ocrBox;ctx.fillStyle='rgba(0,0,0,.45)';
+    ctx.fillRect(0,0,cv.width,b.y*s);ctx.fillRect(0,(b.y+b.h)*s,cv.width,cv.height);ctx.fillRect(0,b.y*s,b.x*s,b.h*s);ctx.fillRect((b.x+b.w)*s,b.y*s,cv.width,b.h*s);
+    ctx.strokeStyle='#ffd34d';ctx.lineWidth=3;ctx.strokeRect(b.x*s,b.y*s,b.w*s,b.h*s)}
+}
+function showCrop(){
+  const box=$('ocr');box.hidden=false;
+  const cv=$('ocv'),maxW=Math.min(box.clientWidth||600,900);
+  cv.width=maxW;cv.height=Math.round(maxW*ocrImg.naturalHeight/ocrImg.naturalWidth);
+  const W=ocrImg.naturalWidth,H=ocrImg.naturalHeight;
+  if(!ocrBox)ocrBox={x:W*.1,y:H*.35,w:W*.8,h:H*.3};
+  drawCrop();
+}
+function hideCrop(){$('ocr').hidden=true}
+(function(){
+  const cv=$('ocv');let st=null;
+  const pt=e=>{const r=cv.getBoundingClientRect(),s=ocrImg.naturalWidth/r.width;return{x:Math.max(0,Math.min(ocrImg.naturalWidth,(e.clientX-r.left)*s)),y:Math.max(0,Math.min(ocrImg.naturalHeight,(e.clientY-r.top)*s))}};
+  cv.addEventListener('pointerdown',e=>{if(!ocrImg)return;cv.setPointerCapture(e.pointerId);st=pt(e);e.preventDefault()});
+  cv.addEventListener('pointermove',e=>{if(!st)return;const p=pt(e);ocrBox={x:Math.min(st.x,p.x),y:Math.min(st.y,p.y),w:Math.abs(p.x-st.x),h:Math.abs(p.y-st.y)};drawCrop()});
+  cv.addEventListener('pointerup',()=>{st=null;if(ocrBox&&(ocrBox.w<10||ocrBox.h<10)){ocrBox=null;drawCrop()}});
+})();
+let ocrBusy=false;
+async function doOCR(crop){
+  if(ocrBusy)return;ocrBusy=true;$('ocrgo').disabled=true;
+  try{ocrResult(await runOCR(crop))}
+  catch(err){console.error(err);ocrWorker=null;say('status',`โหลดตัวอ่านรูปไม่สำเร็จ (${err&&err.message||err}) อาจเป็นเพราะเน็ตช้าหรือเครือข่ายบริษัทบล็อก ลองใช้เน็ตมือถือแล้วกดถ่ายรูปใหม่ ระหว่างนี้พิมพ์รหัสแทนได้`,'err')}
+  finally{ocrBusy=false;$('ocrgo').disabled=false}
 }
 $('photo').addEventListener('change',async e=>{
   const file=e.target.files[0];if(!file)return;e.target.value='';
-  say('status','กำลังอ่านป้ายจากรูป… (ครั้งแรกอาจใช้เวลาโหลดสักครู่)');
-  try{
-    if(!window.Tesseract)await loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js');
-    const {data}=await Tesseract.recognize(file,'eng');
-    const code=extractCode(data.text);
-    if(!code){say('status','อ่านรหัสจากรูปไม่ได้ ลองถ่ายให้ป้ายเต็มกรอบและไม่เอียง หรือพิมพ์รหัสแทน','err');return}
-    $('q').value=norm(code);
-    if(search(code)!=='none')say('status',`📷 อ่านรหัสได้ว่า: ${norm(code)}`);
-  }catch(err){say('status','อ่านรูปในหน้านี้ไม่ได้ ฟีเจอร์ถ่ายรูปใช้ได้เมื่อเปิดผ่านเว็บ GitHub Pages ตอนนี้พิมพ์รหัสแทนได้','err')}
+  $('out').innerHTML='';hideCrop();ocrBox=null;
+  say('status','กำลังเตรียมตัวอ่านรูป… (ครั้งแรกอาจใช้เวลาโหลด 10–20 วินาที)');
+  try{ocrImg=await loadImg(file)}catch(err){say('status','เปิดรูปนี้ไม่ได้ ลองถ่ายใหม่ หรือเลือกรูปแบบ JPG/PNG','err');return}
+  doOCR(null);
 });
+$('ocrgo').onclick=()=>{if(!ocrBox){say('status','ลากนิ้วบนรูปเพื่อวาดกรอบรอบป้ายก่อน','err');return}doOCR(ocrBox)};
+$('ocrclose').onclick=hideCrop;
 
 /* ---------- tabs ---------- */
 function route(){
