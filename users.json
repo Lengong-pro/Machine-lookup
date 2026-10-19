@@ -1,0 +1,17 @@
+{
+ "v": 1,
+ "users": {
+  "VVdqsMqriZ2eKNtizVgWOZT5pPDPnH+o9ptan4Ef0Ow=": {
+   "salt": "BTOW/bI0hF2z9lPympQ/Lg==",
+   "iter": 600000,
+   "iv": "n64EmVF65901kpEA",
+   "ct": "f5pKicMmTGAEM7+m96tdQNNQNNhyRxMeeTyHpI/hK34hA9e2CYDmbb7kUaeMO+ya",
+   "n": {
+    "iv": "tSsSLzsHoHCseK7g",
+    "ct": "yJYUVQDYS6Pk63oFOlTtClhi3v6sT/74ZhU="
+   },
+   "at": "2026-10-19T12:28:38.525Z",
+   "by": "Lengong-pro"
+  }
+ }
+}
