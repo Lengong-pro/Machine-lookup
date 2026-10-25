@@ -23,7 +23,11 @@
     "ct": "9GB+W5SV+F4nYz8TCnlJUxZIgldFHPHQ0gM="
    },
    "at": "2026-10-19T12:31:49.667Z",
-   "by": "Lengong-pro"
+   "by": "Lengong-pro",
+   "r": {
+    "iv": "s8lC27oyLjR5MQM/",
+    "ct": "WWKER3yRDF+oZBaftpAYzmyaxwb80UVUO+Q="
+   }
   },
   "3oIixrDaOwddz+L5O27CNBMHaSyw5QgqvbKQ2yyTzLo=": {
    "salt": "mNg276fyqE9SclDHVs91Qw==",
