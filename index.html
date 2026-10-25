@@ -151,6 +151,9 @@ button:focus-visible,.btn:focus-visible,input:focus-visible,select:focus-visible
   body.nav-on .wrap{padding-bottom:150px}
   body.nav-on .pubbar{bottom:calc(66px + env(safe-area-inset-bottom,0px));padding-bottom:12px}
 }
+@media (max-width:959px){ /* มือถือ: ผลค้นหาอยู่ใต้ช่องค้นหาทันที */
+  .s-left{display:contents}.s-right{order:2}.s-left>.recent,.s-left>.foot{order:3}
+}
 @media (min-width:960px){
   .wrap{max-width:1180px;padding-block:26px 120px}
   #v-search{display:grid;grid-template-columns:400px minmax(0,1fr);gap:24px;align-items:start}
@@ -162,6 +165,21 @@ button:focus-visible,.btn:focus-visible,input:focus-visible,select:focus-visible
 }
 
 /* ---------- search ---------- */
+.frame{position:relative}
+.sugg{position:absolute;left:16px;right:16px;top:86px;z-index:20;background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;max-height:340px;overflow-y:auto}
+.sugg .sh{padding:8px 14px;font-size:12px;color:var(--muted);border-bottom:1px solid var(--line);background:var(--surface-2)}
+.sugg button{width:100%;background:none;border:0;border-radius:0;justify-content:space-between;padding:10px 14px;color:var(--fg);font-weight:500;border-bottom:1px solid var(--line);text-align:left}
+.sugg button:last-child{border-bottom:0}
+.sugg button[aria-selected="true"],.sugg button:hover{background:color-mix(in srgb,var(--accent) 12%,transparent)}
+.sugg .c{font-family:var(--f-code);font-weight:700}
+.sugg .c mark,.list .c mark{background:color-mix(in srgb,var(--accent) 30%,transparent);color:inherit;border-radius:3px;padding:0 1px}
+.sugg .s{font-size:12px;color:var(--muted);white-space:nowrap}
+.guess{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--line);font-size:13.5px;background:color-mix(in srgb,var(--accent) 9%,var(--surface))}
+.guess b{font-family:var(--f-code)}
+.nodata{padding:14px;color:var(--muted);font-size:14px;border-bottom:1px solid var(--line)}
+.notfound{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding:28px 18px}
+.notfound b{font-family:var(--f-display);font-size:24px;letter-spacing:.02em}
+.notfound code{font-family:var(--f-code);font-weight:700;background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:2px 8px}
 .frame{background:linear-gradient(160deg,var(--frame),color-mix(in srgb,var(--frame) 70%,var(--navy)));color:var(--frame-ink);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:11px;box-shadow:var(--shadow)}
 .frame>label{font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;opacity:.9}
 .row{display:flex;gap:8px}
@@ -350,9 +368,10 @@ details ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
       <form class="frame" id="f" autocomplete="off">
         <label for="q">รหัสตำแหน่ง</label>
         <div class="row">
-          <input id="q" placeholder="LP201.BHT06_HS055" autocapitalize="characters" spellcheck="false">
+          <input id="q" placeholder="เช่น LP201-BHT06-HS055 หรือ MU58-1" autocapitalize="characters" spellcheck="false" role="combobox" aria-autocomplete="list" aria-controls="sugg" aria-expanded="false">
           <button class="cta" type="submit">ค้นหา</button>
         </div>
+        <div class="sugg" id="sugg" role="listbox" aria-label="รหัสที่ระบบเดา" hidden></div>
         <div class="row2">
           <button class="btn cam" type="button" id="camBtn"><svg class="ic"><use href="#i-camera"/></svg>ถ่ายรูปป้าย</button>
           <label class="btn cam" for="photo"><svg class="ic"><use href="#i-image"/></svg>เลือกจากคลังรูป</label>
@@ -431,8 +450,21 @@ details ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
         <div class="status" id="sys-status" role="status"></div>
       </div></div>
 
+      <div class="card span2"><div class="panel">
+        <span class="kind">ไฟล์ที่ 1 · machines.json · ใช้ค้นหาเป็นลำดับแรก</span>
+        <h2>นำเข้า: รายชื่อเครื่องจักรทั้งหมด</h2>
+        <div class="small">รายชื่อตำแหน่งเครื่องจักรทุกเครื่องที่มีจริง ระบบใช้ไฟล์นี้ตรวจก่อนว่ามีเครื่องที่ค้นหาอยู่หรือไม่ แล้วจึงดึงรายละเอียดและสถานะ DM มาแสดง ต้องมีคอลัมน์รหัสเต็ม เช่น LP233-MU058-01 คอลัมน์อื่น (เช่น Line, พื้นที่) จะแสดงในรายละเอียดด้วย</div>
+        <div class="small" id="a-minfo"></div>
+        <div class="btns">
+          <label class="btn go" for="xl0">เลือกไฟล์รายชื่อเครื่องจักร</label>
+          <input id="xl0" type="file" accept=".xlsx,.xls,.csv" hidden>
+          <button class="ghost" type="button" id="dl0">ดาวน์โหลดเป็น Excel</button>
+        </div>
+        <div class="status" id="a-mstatus" role="status"></div>
+      </div></div>
+
       <div class="card"><div class="panel">
-        <span class="kind">ไฟล์ที่ 1 · data.json</span>
+        <span class="kind">ไฟล์ที่ 2 · data.json</span>
         <h2>นำเข้า: รายละเอียดเครื่องจักร</h2>
         <div class="small">ข้อมูลสเปกของเครื่อง เช่น Main Type, Length, Kw_moter แทนที่ข้อมูลรายละเอียดทั้งหมดด้วยไฟล์ใหม่ ไม่กระทบข้อมูลสถานะ</div>
         <div class="small" id="a-dinfo"></div>
@@ -445,7 +477,7 @@ details ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
       </div></div>
 
       <div class="card"><div class="panel">
-        <span class="kind">ไฟล์ที่ 2 · status.json</span>
+        <span class="kind">ไฟล์ที่ 3 · status.json</span>
         <h2>นำเข้า: สถานะเครื่องจักร (DM)</h2>
         <div class="small">ประวัติแจ้งซ่อม ต้องมีคอลัมน์รหัสเครื่องจักร (เช่น “ตำแหน่ง”) เพื่อจับคู่กับรายละเอียด แทนที่ข้อมูลสถานะทั้งหมดด้วยไฟล์ใหม่ ไม่กระทบข้อมูลรายละเอียด</div>
         <div class="small" id="a-sinfo"></div>
@@ -513,7 +545,7 @@ const SAMPLE={sample:true,source:'ข้อมูลตัวอย่างจ�
   ['LP201-BHT06-HS055','ICS Tray Straight','3250','PUL','Drive shaft complete low-speed (2.2 KW)','LP201','MTB-West']]},
  {name:'2 Belt',headers:['รหัสตำแหน่ง','ประเภทท่อน','ความยาวสายพาน 1','ความยาวสายพาน 2','ประเภทสายพาน','ประเภทมอเตอร์'],rows:[
   ['LP253-BET81-HS001','ICS Tray Merge/Divert','5350','2740','PUL','Drive Shaft Merge (1.1 KW)']]}]};
-const CKEY='machine-cache-v2',SKEY='machine-status-cache-v1',RKEY='machine-recent-v1',GKEY='machine-gh-v1',REPOKEY='machine-repo-v1';
+const CKEY='machine-cache-v2',SKEY='machine-status-cache-v1',MKEY='machine-master-cache-v1',RKEY='machine-recent-v1',GKEY='machine-gh-v1',REPOKEY='machine-repo-v1';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const norm=s=>String(s??'').toUpperCase().trim().replace(/[\s._\-\/,]+/g,'-').replace(/^-|-$/g,'');
@@ -523,7 +555,7 @@ const ls={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k
 const ss={get(k){try{return sessionStorage.getItem(k)}catch(e){return null}},set(k,v){try{sessionStorage.setItem(k,v)}catch(e){}},del(k){try{sessionStorage.removeItem(k)}catch(e){}}};
 function say(id,t,kind){const el=$(id);el.textContent=t||'';el.className='status'+(kind?' '+kind:'')}
 
-let DB=SAMPLE,INDEX=[],draft=null,dirty=0,GH=null,sel=null,ST={sheets:[]},SIDX=new Map(),draftS=null,dirtyS=0,segTab='info';
+let DB=SAMPLE,INDEX=[],draft=null,dirty=0,GH=null,sel=null,ST={sheets:[]},SIDX=new Map(),draftS=null,dirtyS=0,segTab='info',MC={sheets:[]},MIDX=new Map(),DIDX=new Map(),UNIV=[],draftM=null,dirtyM=0;
 
 /* ---------- data ---------- */
 function codeIdx(sh){
@@ -532,13 +564,19 @@ function codeIdx(sh){
   if(best<0){best=sh.headers.findIndex(h=>/รหัส|code|ตำแหน่ง|tag|id/i.test(h));if(best<0)best=0}
   return best;
 }
+const toks=s=>(String(s||'').toUpperCase().match(/[A-Z]+|\d+/g)||[]).map(t=>/^\d/.test(t)?String(+t):t); // เลขตัด 0 นำหน้า
 function buildIndex(){
-  INDEX=[];
-  for(const sh of DB.sheets){const ci=codeIdx(sh);for(const r of sh.rows){const code=norm(r[ci]);if(code)INDEX.push({sh,r,ci,code,fk:fkey(code)})}}
+  INDEX=[];DIDX=new Map();MIDX=new Map();
+  for(const sh of DB.sheets){const ci=codeIdx(sh);for(const r of sh.rows){const code=norm(r[ci]);if(!code)continue;const e={sh,r,ci,code,fk:fkey(code)};INDEX.push(e);if(!DIDX.has(e.fk))DIDX.set(e.fk,[]);DIDX.get(e.fk).push(e)}}
+  for(const sh of MC.sheets){const ci=codeIdx(sh);for(const r of sh.rows){const code=norm(r[ci]);if(!code)continue;const fk=fkey(code);if(!MIDX.has(fk))MIDX.set(fk,{sh,r,ci,code,fk})}}
+  // ขั้นที่ 1: รายชื่อเครื่องจักรทั้งหมดคือขอบเขตการค้นหา (ถ้ายังไม่นำเข้า ใช้รหัสจากรายละเอียดแทน)
+  const src=MIDX.size?[...MIDX.values()]:[...new Map(INDEX.map(e=>[e.fk,e])).values()];
+  UNIV=src.map(e=>({code:e.code,fk:e.fk,t:toks(e.code)}));
   const when=DB.updatedAt?new Date(DB.updatedAt).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'}):'';
   buildStatusIndex();
   const sw=ST.updatedAt?new Date(ST.updatedAt).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'}):'';
-  $('dbfoot').innerHTML=`รายละเอียด ${INDEX.length.toLocaleString()} เครื่อง${when?' · อัปเดต '+esc(when):''}${ST.sheets.length?`<br>สถานะ DM ${ST.sheets.reduce((n,s)=>n+s.rows.length,0).toLocaleString()} รายการ${sw?' · อัปเดต '+esc(sw):''}`:''}${DB.sample?'<span class="tag-sample">ข้อมูลตัวอย่าง</span>':''}`;
+  const mw=MC.updatedAt?new Date(MC.updatedAt).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'}):'';
+  $('dbfoot').innerHTML=`${MIDX.size?`เครื่องจักรทั้งหมด ${MIDX.size.toLocaleString()} เครื่อง${mw?' · อัปเดต '+esc(mw):''}<br>`:''}รายละเอียด ${INDEX.length.toLocaleString()} เครื่อง${when?' · อัปเดต '+esc(when):''}${ST.sheets.length?`<br>สถานะ DM ${ST.sheets.reduce((n,s)=>n+s.rows.length,0).toLocaleString()} รายการ${sw?' · อัปเดต '+esc(sw):''}`:''}${DB.sample?'<span class="tag-sample">ข้อมูลตัวอย่าง</span>':''}`;
 }
 async function getJSON(name,key){
   try{const r=await fetch(name+'?t='+Date.now(),{cache:'no-store'});
@@ -547,10 +585,11 @@ async function getJSON(name,key){
   catch(e){const c=ls.get(key);if(c){try{return {...JSON.parse(c),offline:true}}catch(_){}}return null}
 }
 async function loadData(){
-  const enc=!!USERS,[d0,s0]=await Promise.all(enc?[getJSON('data.enc.json',CKEY+'-enc'),getJSON('status.enc.json',SKEY+'-enc')]:[getJSON('data.json',CKEY),getJSON('status.json',SKEY)]);
+  const enc=!!USERS,[d0,s0,m0]=await Promise.all(enc?[getJSON('data.enc.json',CKEY+'-enc'),getJSON('status.enc.json',SKEY+'-enc'),getJSON('machines.enc.json',MKEY+'-enc')]:[getJSON('data.json',CKEY),getJSON('status.json',SKEY),getJSON('machines.json',MKEY)]);
   const open=async o=>{if(!o||o.missing)return o;if(!o.ct)return o;try{return {...(await decObj(o)),offline:o.offline}}catch(e){console.error(e);return null}};
-  const d=await open(d0),st=await open(s0);
-  if(enc){ls.del(CKEY);ls.del(SKEY)} // ไม่เก็บข้อมูลแบบไม่เข้ารหัสไว้ในเครื่อง
+  const d=await open(d0),st=await open(s0),mc=await open(m0);
+  if(mc&&!mc.missing&&mc.sheets)MC=mc;
+  if(enc){ls.del(CKEY);ls.del(SKEY);ls.del(MKEY)} // ไม่เก็บข้อมูลแบบไม่เข้ารหัสไว้ในเครื่อง
   if(d&&!d.missing)DB=d;else if(enc)DB={sheets:[]};
   if(st&&!st.missing)ST=st;
   if((d&&d.offline)||(st&&st.offline))say('status','ออฟไลน์อยู่ ใช้ข้อมูลชุดล่าสุดที่เคยโหลดไว้','err');
@@ -575,7 +614,7 @@ function stClass(v){v=String(v||'').trim(); // ระดับความเส
   if(/ระดับ\s*1|level\s*1/i.test(v))return 'l1';if(/ระดับ\s*[23]|level\s*[23]/i.test(v))return 'l2';return 'l1'}
 const HIDE_COLS=/^(no\.?|แผนการแก้ไข|รายละเอียด|machine type|สาเหตุการชำรุด)$/i; // คอลัมน์ที่ไม่แสดงในหน้าสถานะ
 function buildStatusIndex(src){
-  const S=src||ST,fks=new Set(INDEX.map(e=>e.fk)),idx=new Map();let n=0,matched=0;
+  const S=src||ST,fks=new Set([...INDEX.map(e=>e.fk),...MIDX.keys()]),idx=new Map();let n=0,matched=0;
   for(const sh of S.sheets){const c=statusCols(sh,fks);sh._c=c;
     for(const r of sh.rows){const k=fkey(r[c.mi]);if(!k)continue;n++;if(fks.has(k))matched++;
       if(!idx.has(k))idx.set(k,[]);idx.get(k).push({sh,r})}}
@@ -604,37 +643,83 @@ function statusHTML(recs){
   }
   return html;
 }
-function showOne(e,quiet){
-  const items=e.sh.headers.map((h,i)=>[h,e.r[i]]).filter((x,i)=>i!==e.ci&&String(x[1]??'').trim()!=='');
-  const recs=SIDX.get(e.fk)||[];let open=0,worst='';
+function seqScore(qt,ct){ // จับคู่ทีละส่วนตามลำดับ เช่น MU58-1 → LP233-MU058-01 (null = ไม่เข้า)
+  const n=qt.length,m=ct.length,memo=new Map();
+  const eq=(a,b)=>a===b?0:(/^[A-Z]/.test(a)&&a.length>=2&&b.startsWith(a)?.3:-1);
+  const f=(i,j,first)=>{if(i===n)return (m-j)*.04;const key=i*1000+j*2+(first?1:0);if(memo.has(key))return memo.get(key);
+    let best=Infinity;for(let k=j;k<m;k++){const c=eq(qt[i],ct[k]);if(c<0)continue;const r=f(i+1,k+1,false);if(r<Infinity)best=Math.min(best,c+(k-j)*(first?.03:.3)+r)}
+    memo.set(key,best);return best};
+  const s=f(0,0,true);return s===Infinity?null:s;
+}
+function guessCodes(q,limit=50){ // ขั้นที่ 2: เดาตำแหน่งจากข้อมูลหลังบ้าน
+  const k=fkey(q),qt=toks(q);if(!k)return [];
+  const res=[];
+  for(const u of UNIV){
+    if(u.fk===k){res.push({u,s:0});continue}
+    const sc=qt.length?seqScore(qt,u.t):null;
+    if(sc!==null){res.push({u,s:1+sc});continue}
+    if(k.length>=3&&u.fk.includes(k))res.push({u,s:2+(u.fk.length-k.length)*.01});
+  }
+  if(!res.length&&k.length>=5){ // พิมพ์ผิดเล็กน้อย
+    const qq=conf(/^LP\d/.test(k)?k.slice(2):k);
+    for(const u of UNIV){const p=u.cf||(u.cf=conf(/^LP\d/.test(u.fk)?u.fk.slice(2):u.fk));const d=subDist(qq,p)+Math.max(0,p.length-qq.length-1)*.5;if(d<=1.2)res.push({u,s:3+d})}
+  }
+  res.sort((a,b)=>a.s-b.s||a.u.code.localeCompare(b.u.code));
+  return res.slice(0,limit);
+}
+function machineHint(fk){const d=DIDX.get(fk),r=SIDX.get(fk);return [d?'มีรายละเอียด':'',r&&r.length?`DM ${r.length}`:''].filter(Boolean).join(' · ')||'ยังไม่มีข้อมูลเพิ่มเติม'}
+function hl(code,q){const qt=new Set(toks(q));return esc(code).replace(/[A-Z]+|\d+/g,t=>qt.has(/^\d/.test(t)?String(+t):t)?`<mark>${t}</mark>`:t)}
+function showMachine(fk,quiet,guessFrom){ // ขั้นที่ 4–5: ดึงรายละเอียด + สถานะ DM แล้วแสดงผล
+  const m=MIDX.get(fk),dets=DIDX.get(fk)||[],recs=SIDX.get(fk)||[],code=(m&&m.code)||(dets[0]&&dets[0].code)||fk;
+  const items=[],seen=new Set();
+  const add=(h,v)=>{h=String(h||'').trim();v=String(v??'').trim();if(!v||seen.has(h.toLowerCase()))return;seen.add(h.toLowerCase());items.push([h,v])};
+  if(m)m.sh.headers.forEach((h,i)=>{if(i!==m.ci)add(h,m.r[i])});
+  for(const e of dets)e.sh.headers.forEach((h,i)=>{if(i!==e.ci)add(h,e.r[i])});
+  let open=0,worst='';
   for(const x of recs){const k=x.sh._c.si>=0?stClass(x.r[x.sh._c.si]):'';if(k&&k!=='ok'){open++;if(LV_ORDER[k]>LV_ORDER[worst])worst=k}}
-  $('out').innerHTML=`<article class="card"><div class="plate"><div class="code">${esc(e.code)}</div></div>
-   <div class="meta"><span class="found">✓ พบข้อมูล</span><span class="chip">แท็บ: ${esc(e.sh.name)}</span></div>
+  const chip=dets[0]?`แท็บ: ${dets[0].sh.name}`:'รายชื่อเครื่องจักร';
+  $('out').innerHTML=`<article class="card"><div class="plate"><div class="code">${esc(code)}</div></div>
+   ${guessFrom?`<div class="guess">ระบบเดาจาก “<b>${esc(guessFrom)}</b>” → <b>${esc(code)}</b></div>`:''}
+   <div class="meta"><span class="found">✓ พบเครื่องจักร</span><span class="chip">${esc(chip)}</span></div>
    <div class="seg" role="tablist">
      <button type="button" role="tab" data-t="info" aria-selected="${segTab==='info'}">รายละเอียดเครื่องจักร</button>
      <button type="button" role="tab" data-t="st" aria-selected="${segTab==='st'}">สถานะเครื่องจักร<span class="n ${worst}">${open?open+' ค้าง':recs.length}</span></button>
    </div>
-   <div data-p="info"${segTab==='info'?'':' hidden'}><dl>${items.map(([h,v])=>`<dt>${esc(h||'—')}</dt><dd>${esc(v)}</dd>`).join('')}</dl></div>
+   <div data-p="info"${segTab==='info'?'':' hidden'}>${dets.length?'':'<div class="nodata">ยังไม่มีรายละเอียดสเปกของเครื่องนี้ในระบบ</div>'}${items.length?`<dl>${items.map(([h,v])=>`<dt>${esc(h||'—')}</dt><dd>${esc(v)}</dd>`).join('')}</dl>`:''}</div>
    <div data-p="st"${segTab==='st'?'':' hidden'}>${statusHTML(recs)}</div></article>`;
   $('out').querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{segTab=b.dataset.t;
     $('out').querySelectorAll('.seg button').forEach(x=>x.setAttribute('aria-selected',x===b));
     $('out').querySelectorAll('[data-p]').forEach(p=>p.hidden=p.dataset.p!==segTab)});
-  if(!quiet)addRecent(e.code);
+  if(!quiet)addRecent(code);
 }
-function showList(list,q){
-  $('out').innerHTML=`<div class="card"><div class="head">ไม่พบ “${esc(q)}” ตรงทั้งหมด · รหัสที่ใกล้เคียง ${list.length} รายการ</div>
-   <div class="list">${list.map((e,i)=>`<button type="button" data-i="${i}"><span class="c">${esc(e.code)}</span><span class="s">${esc(e.sh.name)}</span></button>`).join('')}</div></div>`;
-  $('out').querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>{const e=list[b.dataset.i];$('q').value=e.code;showOne(e);say('status','')});
+function showOne(e,quiet){showMachine(e.fk,quiet)}
+function showGuessList(list,q){
+  $('out').innerHTML=`<div class="card"><div class="head">ระบบเดาจาก “${esc(q)}” ได้ ${list.length}${list.length>=20?'+':''} เครื่อง · เลือกเครื่องที่ต้องการ</div>
+   <div class="list">${list.slice(0,20).map((x,i)=>`<button type="button" data-i="${i}"><span class="c">${hl(x.u.code,q)}</span><span class="s">${esc(machineHint(x.u.fk))}</span></button>`).join('')}</div></div>`;
+  $('out').querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>{const u=list[b.dataset.i].u;$('q').value=u.code;say('status','');showMachine(u.fk)});
 }
-function search(q,quiet){
-  q=String(q||'').trim();if(!q){$('out').innerHTML='';return 'none'}
-  const k=fkey(q);
-  const exact=INDEX.filter(e=>e.fk===k);
-  if(exact.length===1){say('status','');showOne(exact[0],quiet);return 'one'}
-  const part=exact.length?exact:INDEX.filter(e=>e.fk.includes(k)).slice(0,30);
-  if(part.length===1){say('status','');showOne(part[0],quiet);return 'one'}
-  if(part.length){say('status','');showList(part,q);return 'many'}
-  $('out').innerHTML='';say('status',`ไม่พบ “${norm(q)}” ในข้อมูล ลองตรวจตัวอักษรอีกครั้ง`,'err');return 'none';
+function showNotFound(q){
+  $('out').innerHTML=`<div class="card notfound"><b>ไม่พบเครื่องจักร</b><span>ไม่มี <code>${esc(norm(q))}</code> ในรายชื่อเครื่องจักรทั้งหมด</span><span class="small">ตรวจรหัสแล้วกรอกใหม่อีกครั้ง</span></div>`;
+}
+function search(q,quiet){ // ขั้นที่ 1–3
+  hideSugg();q=String(q||'').trim();if(!q){$('out').innerHTML='';return 'none'}
+  const list=guessCodes(q);say('status','');
+  if(!list.length){showNotFound(q);return 'none'}
+  const top=list[0],tier=x=>Math.floor(x.s),clear=!list[1]||tier(list[1])>tier(top)||list[1].s-top.s>=.5;
+  if(top.s===0){showMachine(top.u.fk,quiet);return 'one'}
+  if(clear){$('q').value=top.u.code;showMachine(top.u.fk,quiet,q);return 'one'}
+  showGuessList(list,q);return 'many';
+}
+/* ---------- รายการเดาขณะพิมพ์ ---------- */
+let sugIdx=-1,sugList=[];
+function hideSugg(){$('sugg').hidden=true;$('q').setAttribute('aria-expanded','false');sugIdx=-1}
+function renderSugg(){
+  const q=$('q').value.trim();if(fkey(q).length<2){hideSugg();return}
+  sugList=guessCodes(q,6);
+  if(!sugList.length||(sugList.length===1&&sugList[0].s===0)){hideSugg();return}
+  $('sugg').innerHTML=`<div class="sh">ระบบเดาว่าเป็น…</div>`+sugList.map((x,i)=>`<button type="button" role="option" data-i="${i}" aria-selected="${i===sugIdx}"><span class="c">${hl(x.u.code,q)}</span><span class="s">${esc(machineHint(x.u.fk))}</span></button>`).join('');
+  $('sugg').querySelectorAll('[data-i]').forEach(b=>b.onmousedown=e=>{e.preventDefault();const u=sugList[b.dataset.i].u;$('q').value=u.code;hideSugg();showMachine(u.fk)});
+  $('sugg').hidden=false;$('q').setAttribute('aria-expanded','true');
 }
 function addRecent(code){
   let r=[];try{r=JSON.parse(ls.get(RKEY)||'[]')}catch(e){}
@@ -646,7 +731,14 @@ function renderRecent(r){
   $('recent').querySelectorAll('button').forEach(b=>b.onclick=()=>{$('q').value=b.textContent;search(b.textContent)});
 }
 $('f').addEventListener('submit',e=>{e.preventDefault();search($('q').value)});
-let tmr;$('q').addEventListener('input',()=>{clearTimeout(tmr);const v=$('q').value;if(fkey(v).length>=4)tmr=setTimeout(()=>search(v,true),250)});
+let tmr;$('q').addEventListener('input',()=>{clearTimeout(tmr);sugIdx=-1;tmr=setTimeout(renderSugg,120)});
+$('q').addEventListener('keydown',e=>{
+  if($('sugg').hidden)return;
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();sugIdx=(sugIdx+(e.key==='ArrowDown'?1:-1)+sugList.length+1)%(sugList.length+1)-0;if(sugIdx>=sugList.length)sugIdx=-1;renderSugg()}
+  else if(e.key==='Enter'&&sugIdx>=0){e.preventDefault();const u=sugList[sugIdx].u;$('q').value=u.code;hideSugg();showMachine(u.fk)}
+  else if(e.key==='Escape')hideSugg();
+});
+$('q').addEventListener('blur',()=>setTimeout(hideSugg,150));
 
 function loadScript(src){return new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=()=>no(new Error('โหลดไฟล์ '+src.split('/').pop()+' ไม่ได้'));document.head.appendChild(s)})}
 
@@ -665,7 +757,7 @@ function matchOCR(text){
   if(!lines.length)return [];
   const cands=[...new Set([...lines,lines.join('')])].map(conf);
   const seen=new Set(),res=[];
-  for(const e of INDEX){
+  for(const e of UNIV){
     if(seen.has(e.fk))continue;seen.add(e.fk);
     const p=e.cf||(e.cf=conf(/^LP\d/.test(e.fk)?e.fk.slice(2):e.fk));let d=99;
     for(const c of cands){const x=subDist(p,c)+Math.max(0,c.length-p.length-3)*.6;if(x<d)d=x;if(!d)break}
@@ -957,7 +1049,7 @@ function ocrResult(r){
   const seen=norm(r.text.split('\n').find(l=>/LP/i.test(l))||r.text.split('\n')[0]||'');
   const b=r.best;
   if(b.length&&r.agree&&b[0].d<=2&&r.margin>=.4&&(r.reads>=2||b[0].d<=.4)){
-    const e=b[0].e;$('q').value=e.code;showOne(e);
+    const e=b[0].e;$('q').value=e.code;showMachine(e.fk);
     say('status',b[0].d>.5?`📷 อ่านได้ใกล้เคียง “${seen}” → ${e.code} โปรดตรวจว่าตรงกับป้าย`:`📷 อ่านรหัสได้ว่า: ${e.code}`,b[0].d>.5?'':'good');
     return;
   }
@@ -1018,7 +1110,7 @@ function route(){
   $('t-search').toggleAttribute('aria-current',!admin);$('t-admin').toggleAttribute('aria-current',admin);
   if(admin){$('t-admin').setAttribute('aria-current','page')}else{$('t-search').setAttribute('aria-current','page')}
   $('sub').textContent=admin?'สำหรับผู้ดูแล: นำเข้า แก้ไข และเผยแพร่ข้อมูลให้ทุกคน':'พิมพ์รหัส หรือถ่ายรูปป้ายบนเครื่อง ระบบจะแสดงข้อมูลออกมา';
-  $('pubbar').hidden=!(admin&&(dirty+dirtyS)>0);
+  $('pubbar').hidden=!(admin&&(dirty+dirtyS+dirtyM)>0);
 }
 window.addEventListener('hashchange',route);
 
@@ -1054,15 +1146,15 @@ $('login').onclick=async()=>{
   }finally{$('login').disabled=false}
 };
 $('logout').onclick=()=>{
-  if((dirty+dirtyS)&&!$('logout').dataset.sure){$('logout').dataset.sure=1;$('logout').textContent='ยังไม่เผยแพร่ กดอีกครั้งเพื่อออก';return}
-  GH=null;ss.del(GKEY);draft=null;dirty=0;draftS=null;dirtyS=0;sel=null;delete $('logout').dataset.sure;$('logout').textContent='ตัดการเชื่อมต่อ GitHub';
+  if((dirty+dirtyS+dirtyM)&&!$('logout').dataset.sure){$('logout').dataset.sure=1;$('logout').textContent='ยังไม่เผยแพร่ กดอีกครั้งเพื่อออก';return}
+  GH=null;ss.del(GKEY);draft=null;dirty=0;draftS=null;dirtyS=0;draftM=null;dirtyM=0;sel=null;delete $('logout').dataset.sure;$('logout').textContent='ตัดการเชื่อมต่อ GitHub';
   useSysToken();if(GH&&canAdmin()){enterAdmin();return}
   $('a-main').hidden=true;$('a-login').hidden=false;route();
 };
 function enterAdmin(){
   $('a-login').hidden=true;$('a-main').hidden=false;
   $('a-who').textContent=USERS?ME:GH.login;$('logout').hidden=!!GH.sys;
-  draft=clone(DB);delete draft.sample;dirty=0;sel=null;draftS=clone({sheets:ST.sheets.map(s=>({name:s.name,headers:s.headers,rows:s.rows})),source:ST.source});dirtyS=0;
+  draft=clone(DB);delete draft.sample;dirty=0;sel=null;draftS=clone({sheets:ST.sheets.map(s=>({name:s.name,headers:s.headers,rows:s.rows})),source:ST.source});dirtyS=0;draftM=plainCopy(MC);dirtyM=0;
   renderAdmin();applyAccess();
 }
 function renderAdmin(){
@@ -1077,7 +1169,12 @@ function renderAdmin(){
   $('a-dinfo').textContent=`ตอนนี้: ${draft.sheets.length} แท็บ · ${dn.toLocaleString()} รายการ${dirty?' · มีการแก้ไขที่ยังไม่เผยแพร่':''}`;
   if(sn){const r=buildStatusIndex(draftS);$('a-sinfo').textContent=`ตอนนี้: ${sn.toLocaleString()} รายการ · จับคู่กับเครื่องจักรได้ ${r.matched.toLocaleString()} รายการ (คอลัมน์รหัส: ${[...new Set(r.cols)].join(', ')})${dirtyS?' · ยังไม่เผยแพร่':''}`}
   else $('a-sinfo').textContent='ตอนนี้: ยังไม่มีข้อมูลสถานะ';
-  const parts=[];if(dirty)parts.push('รายละเอียด');if(dirtyS)parts.push('สถานะ');
+  const mn=draftM.sheets.reduce((n,s)=>n+s.rows.length,0);
+  if(mn){const fks=new Set();for(const sh of draftM.sheets){const ci=codeIdx(sh);for(const r of sh.rows){const k=fkey(r[ci]);if(k)fks.add(k)}}
+    const ci0=draftM.sheets[0]?draftM.sheets[0].headers[codeIdx(draftM.sheets[0])]:'';let wd=0,wst=0;for(const k of fks){if(DIDX.has(k))wd++;if(SIDX.has(k))wst++}
+    $('a-minfo').textContent=`ตอนนี้: ${fks.size.toLocaleString()} เครื่อง (คอลัมน์รหัส: ${ci0}) · มีรายละเอียด ${wd.toLocaleString()} · มีประวัติ DM ${wst.toLocaleString()}${dirtyM?' · ยังไม่เผยแพร่':''}`}
+  else $('a-minfo').textContent='ตอนนี้: ยังไม่ได้นำเข้า ระบบจึงค้นหาจากรหัสในไฟล์รายละเอียดแทน';
+  const parts=[];if(dirtyM)parts.push('รายชื่อเครื่องจักร');if(dirty)parts.push('รายละเอียด');if(dirtyS)parts.push('สถานะ');
   $('pubtxt').textContent=`มีการแก้ไข${parts.join(' และ ')}ที่ยังไม่เผยแพร่`;
   route();
 }
@@ -1139,6 +1236,8 @@ function bindImport(inputId,statusId,apply){
     catch(err){console.error(err);say(statusId,'อ่านไฟล์ไม่ได้ ตรวจว่าเป็น .xlsx หรือ .csv และมีหัวคอลัมน์','err')}
   });
 }
+const plainCopy=o=>({source:o.source,sheets:(o.sheets||[]).map(s=>({name:s.name,headers:s.headers,rows:s.rows}))});
+bindImport('xl0','a-mstatus',(file,sheets)=>{draftM={source:file.name,sheets};dirtyM++;renderAdmin()});
 bindImport('xl','a-xstatus',(file,sheets)=>{draft={source:file.name,sheets};sel=null;dirty++;renderAdmin()});
 bindImport('xl2','a-sstatus',(file,sheets)=>{
   const r=buildStatusIndex({sheets});
@@ -1151,8 +1250,9 @@ function downloadBook(sheets,name,statusId){
     XLSX.writeFile(wb,name)}catch(e){say(statusId,'ดาวน์โหลดไม่ได้ในหน้านี้','err')}
 }
 $('dl').onclick=()=>downloadBook(draft.sheets,'machine-data.xlsx','a-xstatus');
+$('dl0').onclick=()=>{if(!draftM.sheets.length){say('a-mstatus','ยังไม่มีรายชื่อเครื่องจักรให้ดาวน์โหลด','err');return}downloadBook(draftM.sheets,'machine-list.xlsx','a-mstatus')};
 $('dl2').onclick=()=>{if(!draftS.sheets.length){say('a-sstatus','ยังไม่มีข้อมูลสถานะให้ดาวน์โหลด','err');return}downloadBook(draftS.sheets,'machine-status.xlsx','a-sstatus')};
-$('discard').onclick=()=>{draft=clone(DB);delete draft.sample;dirty=0;sel=null;draftS={sheets:ST.sheets.map(s=>({name:s.name,headers:s.headers,rows:s.rows})),source:ST.source};dirtyS=0;renderAdmin()};
+$('discard').onclick=()=>{draft=clone(DB);delete draft.sample;dirty=0;sel=null;draftS={sheets:ST.sheets.map(s=>({name:s.name,headers:s.headers,rows:s.rows})),source:ST.source};dirtyS=0;draftM=plainCopy(MC);dirtyM=0;renderAdmin()};
 $('publish').onclick=async()=>{
   const b=$('publish');b.disabled=true;b.textContent='กำลังเผยแพร่…';
   const put=async(path,src,msg)=>{
@@ -1162,9 +1262,10 @@ $('publish').onclick=async()=>{
     return out;
   };
   try{
-    if(dirty){DB=await put('data.json',draft,'อัปเดตรายละเอียดเครื่องจักร');ls.set(CKEY,JSON.stringify(DB));dirty=0;say('a-xstatus','เผยแพร่รายละเอียดแล้ว ทุกคนจะเห็นภายใน 1–2 นาที','good')}
-    if(dirtyS){ST=await put('status.json',draftS,'อัปเดตสถานะเครื่องจักร (DM)');ls.set(SKEY,JSON.stringify(ST));dirtyS=0;say('a-sstatus','เผยแพร่สถานะแล้ว ทุกคนจะเห็นภายใน 1–2 นาที','good')}
-    buildIndex();draft=clone(DB);delete draft.sample;draftS={sheets:ST.sheets.map(s=>({name:s.name,headers:s.headers,rows:s.rows})),source:ST.source};renderAdmin();
+    if(dirtyM){MC=await put('machines.json',draftM,'อัปเดตรายชื่อเครื่องจักรทั้งหมด');if(!USERS)ls.set(MKEY,JSON.stringify(MC));dirtyM=0;say('a-mstatus','เผยแพร่รายชื่อเครื่องจักรแล้ว ทุกคนจะเห็นภายใน 1–2 นาที','good')}
+    if(dirty){DB=await put('data.json',draft,'อัปเดตรายละเอียดเครื่องจักร');if(!USERS)ls.set(CKEY,JSON.stringify(DB));dirty=0;say('a-xstatus','เผยแพร่รายละเอียดแล้ว ทุกคนจะเห็นภายใน 1–2 นาที','good')}
+    if(dirtyS){ST=await put('status.json',draftS,'อัปเดตสถานะเครื่องจักร (DM)');if(!USERS)ls.set(SKEY,JSON.stringify(ST));dirtyS=0;say('a-sstatus','เผยแพร่สถานะแล้ว ทุกคนจะเห็นภายใน 1–2 นาที','good')}
+    buildIndex();draft=clone(DB);delete draft.sample;draftS={sheets:ST.sheets.map(s=>({name:s.name,headers:s.headers,rows:s.rows})),source:ST.source};draftM=plainCopy(MC);renderAdmin();
   }catch(e){renderAdmin();
     say('a-xstatus',e.status===409?'มีคนอื่นเพิ่งเผยแพร่ก่อนหน้า โหลดหน้าใหม่แล้วแก้อีกครั้ง':e.status===403||e.status===404?'token นี้ไม่มีสิทธิ์เขียน ตรวจว่าตั้ง Contents เป็น Read and write':'เผยแพร่ไม่สำเร็จ: '+e.message,'err');
     $('v-admin').scrollIntoView({behavior:'smooth'});
@@ -1361,7 +1462,7 @@ $('uadd').onclick=async()=>{
   if(p.length<6){say('u-status','รหัสผ่านต้องยาวอย่างน้อย 6 ตัว','err');return}
   if(!GH){say('u-status','ต้องเชื่อมต่อ GitHub ก่อน','err');return}
   if(!USERS){ // เปิดระบบครั้งแรก
-    if(dirty||dirtyS){say('u-status','มีการแก้ไขข้อมูลที่ยังไม่เผยแพร่ กด “เผยแพร่ให้ทุกคน” ก่อน','err');return}
+    if(dirty||dirtyS||dirtyM){say('u-status','มีการแก้ไขข้อมูลที่ยังไม่เผยแพร่ กด “เผยแพร่ให้ทุกคน” ก่อน','err');return}
     return userOp(async()=>{
       DKEY=await importDKey(crypto.getRandomValues(new Uint8Array(32)));
       const nu={v:2,users:{[await uhash(u)]:await userEntry(u,p,'admin')}};
@@ -1369,11 +1470,12 @@ $('uadd').onclick=async()=>{
       const stamp=o=>({source:o.source,updatedAt:o.updatedAt||new Date().toISOString(),updatedBy:o.updatedBy||GH.login,sheets:o.sheets.map(s=>({name:s.name,headers:s.headers,rows:s.rows}))});
       await ghPut('data.enc.json',JSON.stringify(await encObj(stamp(DB))),'เข้ารหัสรายละเอียดเครื่องจักร');
       if(ST.sheets.length)await ghPut('status.enc.json',JSON.stringify(await encObj(stamp(ST))),'เข้ารหัสสถานะเครื่องจักร');
+      if(MC.sheets.length)await ghPut('machines.enc.json',JSON.stringify(await encObj(stamp(MC))),'เข้ารหัสรายชื่อเครื่องจักร');
       await ghPut('users.json',JSON.stringify(nu,null,1),'เปิดระบบล็อกอิน');
       USERS=nu;ME=u;saveSession(u,new Uint8Array(await crypto.subtle.exportKey('raw',DKEY)),false);
       say('u-status','กำลังลบไฟล์ข้อมูลแบบไม่เข้ารหัส…');
-      await ghDel('data.json','ลบข้อมูลแบบไม่เข้ารหัส');await ghDel('status.json','ลบข้อมูลแบบไม่เข้ารหัส');
-      ls.del(CKEY);ls.del(SKEY);await computeRoles();applyRoleUI();applyAccess();
+      await ghDel('data.json','ลบข้อมูลแบบไม่เข้ารหัส');await ghDel('status.json','ลบข้อมูลแบบไม่เข้ารหัส');await ghDel('machines.json','ลบข้อมูลแบบไม่เข้ารหัส');
+      ls.del(CKEY);ls.del(SKEY);ls.del(MKEY);await computeRoles();applyRoleUI();applyAccess();
     },`เปิดระบบล็อกอินแล้ว Admin คนแรกคือ “${u}”`);
   }
   const h=await uhash(u),meH=await uhash(ME);
