@@ -265,6 +265,24 @@ dl>:nth-last-child(-n+2){border-bottom:0}
 .seg.three{grid-template-columns:repeat(3,1fr)}
 @media (min-width:960px){#v-plan{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}#v-plan>.span2{grid-column:1/-1}}
 
+/* ---------- multi-select ---------- */
+.msel{position:relative}
+.mbtn{width:100%;justify-content:space-between;background:var(--surface-2);border:1px solid var(--line);color:var(--fg);font-weight:500;padding:9px 11px;border-radius:10px;text-align:left}
+.mbtn #pFamLbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mbtn .ic{transform:rotate(90deg);width:16px;height:16px;color:var(--muted)}
+.mpop{position:absolute;right:0;left:0;top:calc(100% + 6px);z-index:25;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:10px;display:flex;flex-direction:column;gap:8px;min-width:260px}
+.mpop>input{font:inherit;padding:8px 10px;border-radius:9px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg)}
+.mall{display:flex;align-items:center;gap:8px;font-weight:600;padding:4px 2px;border-bottom:1px solid var(--line);padding-bottom:8px}
+.mlist{max-height:280px;overflow-y:auto;display:flex;flex-direction:column}
+.mlist label{display:flex;align-items:center;gap:8px;padding:6px 4px;border-radius:8px;font-size:14px;cursor:pointer}
+.mlist label:hover{background:var(--surface-2)}
+.mlist .c{margin-left:auto;font-family:var(--f-code);font-size:12px;color:var(--muted)}
+.field .mpop input[type=checkbox]{width:17px;height:17px;flex:none;padding:0;margin:0;accent-color:var(--accent)}
+.field .mpop .mall,.field .mpop .mlist label{color:var(--fg);font-size:14px}
+.tbl td.wr.spec{white-space:nowrap;min-width:0}
+.mfoot{display:flex;justify-content:space-between;align-items:center;gap:8px;border-top:1px solid var(--line);padding-top:8px}
+.spec{font-family:var(--f-code);font-size:12.5px}
+
 /* ---------- replacement timeline ---------- */
 .tlwrap{position:relative;overflow-x:auto;border-bottom:1px solid var(--line)}
 .tl{display:block;min-width:640px;width:100%;height:auto;font-family:var(--f-body)}
@@ -448,7 +466,16 @@ details ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
       <div class="prange">
         <label class="field"><span>ตั้งแต่</span><input type="date" id="pFrom"></label>
         <label class="field"><span>ถึง</span><input type="date" id="pTo"></label>
-        <label class="field"><span>อะไหล่</span><select id="pFam"></select></label>
+        <div class="field"><span>อะไหล่</span>
+          <div class="msel" id="pFamBox">
+            <button type="button" class="mbtn" id="pFamBtn" aria-haspopup="true" aria-expanded="false"><span id="pFamLbl">อะไหล่ทุกชนิด</span><svg class="ic"><use href="#i-chev"/></svg></button>
+            <div class="mpop" id="pFamPop" hidden>
+              <input id="pFamQ" placeholder="ค้นหาชื่ออะไหล่" autocomplete="off" aria-label="ค้นหาชื่ออะไหล่">
+              <label class="mall"><input type="checkbox" id="pFamAll"> เลือกทั้งหมด</label>
+              <div class="mlist" id="pFamList"></div>
+              <div class="mfoot"><span class="small" id="pFamCnt"></span><button type="button" class="cta sm" id="pFamOk">ตกลง</button></div>
+            </div>
+          </div></div>
       </div>
       <div class="chips" id="pPresets">
         <button type="button" data-p="next30" aria-pressed="false">30 วันข้างหน้า</button>
@@ -1475,9 +1502,10 @@ let pInit=false;
 function initPlanView(){
   const P=buildPlan();
   if(!pInit){pInit=true;setPreset('next30');}
-  const cur=$('pFam').value;
-  $('pFam').innerHTML='<option value="">อะไหล่ทุกชนิด</option>'+P.fams.filter(f=>P.cnt.get(f)>=10).map(f=>`<option value="${esc(f)}">${esc(famTitle(f))} (${P.cnt.get(f)})</option>`).join('');
-  $('pFam').value=cur;
+  FAMLIST=P.fams.filter(f=>P.cnt.get(f)>=10);
+  if(FAMSEL)for(const f of [...FAMSEL])if(!FAMLIST.includes(f))FAMSEL.delete(f);
+  if(FAMSEL&&!FAMSEL.size)FAMSEL=null;
+  famLabel();
   $('pInfo').textContent=ST.sheets.length?`คำนวณจากประวัติ DM ${P.EV.length.toLocaleString()} รายการ · ข้อมูลล่าสุด ${fmtD(P.maxD)}`:'ยังไม่มีข้อมูลสถานะ DM ให้คำนวณ นำเข้าไฟล์สถานะในหน้า Admin ก่อน';
   renderPlan();
 }
@@ -1492,9 +1520,9 @@ function setPreset(p){
   document.querySelectorAll('#pPresets button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.p===p));
 }
 function getRange(){const a=Date.parse($('pFrom').value+'T00:00'),b=Date.parse($('pTo').value+'T00:00');return (a&&b&&b>=a)?[a,b+DAY-1]:null}
-function forecast(a,b,fam){ // คาดการณ์จำนวนชิ้นในช่วง [a,b] จากข้อมูลก่อนวันเริ่ม (ถ้าช่วงอยู่ในอดีต จะเทียบกับของจริงได้)
+function forecast(a,b,fs){ // คาดการณ์จำนวนชิ้นในช่วง [a,b] จากข้อมูลก่อนวันเริ่ม (ถ้าช่วงอยู่ในอดีต จะเทียบกับของจริงได้)
   const P=buildPlan(),asOf=Math.min(a,dayStart(Date.now())),N=Math.round((b+1-a)/DAY),now=Date.now();
-  const fams=fam?[fam]:P.fams.filter(f=>P.cnt.get(f)>=10);
+  const fams=fs?[...fs]:P.fams.filter(f=>P.cnt.get(f)>=10);
   const one=(f,ds)=>{
     const prior=ds.filter(d=>d<asOf),n90=prior.filter(d=>d>=asOf-90*DAY).length,n365=prior.filter(d=>d>=asOf-365*DAY).length;
     let mn=asOf;for(const d of prior)if(d<mn)mn=d;
@@ -1515,56 +1543,102 @@ function forecast(a,b,fam){ // คาดการณ์จำนวนชิ้�
   rows.sort((x,y)=>y.exp-x.exp);
   const today=dayStart(now);return {rows,total,N,asOf,past:a<today,partial:a<today&&b>now};
 }
-function dueList(a,b,fam){ // เครื่องที่ช่วงควรตรวจ/เปลี่ยนทับกับช่วงที่เลือก
+function dueList(a,b,fs){ // เครื่องที่ช่วงควรตรวจ/เปลี่ยนทับกับช่วงที่เลือก
   const P=buildPlan(),out=[],now=Date.now();
-  for(const [k,v] of P.byKey){const f=v[0].fam;if(fam&&f!==fam)continue;const st=P.FS.get(f);if(!st)continue;
+  for(const [k,v] of P.byKey){const f=v[0].fam;if(fs&&!fs.has(f))continue;const st=P.FS.get(f);if(!st)continue;
     const last=v[v.length-1],base=last.done||last.d,from=base+st.p25*DAY,to=base+st.p75*DAY;
     if(to<a||from>b)continue;const age=(now-base)/DAY;
-    out.push({fk:last.fk,code:last.code,f,base,from,to,mid:base+st.p50*DAY,cls:age<st.p25?'ok':age<st.p50?'l1':age<st.p75?'l2':'off',open:v.some(e=>e.lv&&e.lv!=='ok')});
+    const row={fk:last.fk,code:last.code,f,base,from,to,mid:base+st.p50*DAY,cls:age<st.p25?'ok':age<st.p50?'l1':age<st.p75?'l2':'off',open:v.some(e=>e.lv&&e.lv!=='ok'),spec:famTitle(f)};
+    if(isTB(f)){const B=beltSpecs(last.fk);
+      if(B.specs.length){for(const x of B.specs)out.push({...row,spec:x.spec,qty:x.qty,tb:true});if(B.extra)out.push({...row,spec:EXTRA_SPEC,qty:B.extra,tb:true,extra:true});continue}
+      row.spec='Toothed belt (ไม่มีข้อมูลความยาว)';row.tb=true;row.qty=1}
+    out.push(row);
   }
   return out.sort((x,y)=>x.mid-y.mid);
 }
-function badActors(days,fam){
+function badActors(days,fs){
   const P=buildPlan(),now=Date.now(),since=now-days*DAY,m=new Map();
-  for(const e of P.EV){if(e.d<since||(fam&&e.fam!==fam))continue;let x=m.get(e.fk);if(!x){x={fk:e.fk,code:e.code,n:0,open:0,last:0,fams:new Map()};m.set(e.fk,x)}
+  for(const e of P.EV){if(e.d<since||(fs&&!fs.has(e.fam)))continue;let x=m.get(e.fk);if(!x){x={fk:e.fk,code:e.code,n:0,open:0,last:0,fams:new Map()};m.set(e.fk,x)}
     x.n++;if(e.lv&&e.lv!=='ok')x.open++;x.last=Math.max(x.last,e.d);if(e.fam)x.fams.set(e.fam,(x.fams.get(e.fam)||0)+1)}
   const list=[...m.values()].sort((a,b)=>b.n-a.n||b.last-a.last);
   // ทดสอบย้อนหลัง: ณ 90 วันก่อน เครื่องที่เสียบ่อยสุด 10% เกิด DM ใหม่ใน 90 วันถัดมากี่ %
   const cut=now-90*DAY,cnt=new Map(),after=new Set();
-  for(const e of P.EV){if(fam&&e.fam!==fam)continue;if(e.d<cut&&e.d>=cut-days*DAY)cnt.set(e.fk,(cnt.get(e.fk)||0)+1);else if(e.d>=cut)after.add(e.fk)}
+  for(const e of P.EV){if(fs&&!fs.has(e.fam))continue;if(e.d<cut&&e.d>=cut-days*DAY)cnt.set(e.fk,(cnt.get(e.fk)||0)+1);else if(e.d>=cut)after.add(e.fk)}
   const ks=[...cnt.entries()].sort((a,b)=>b[1]-a[1]),top=ks.slice(0,Math.max(1,Math.floor(ks.length/10)));
   const rate=arr=>arr.length?arr.filter(([k])=>after.has(k)).length/arr.length:0;
   return {list,avg:list.length?list.reduce((s,x)=>s+x.n,0)/list.length:0,bt:ks.length>=50?{top:rate(top),all:rate(ks)}:null};
 }
 function openMachine(fk){location.hash='#search';const m=MIDX.get(fk)||(DIDX.get(fk)||[])[0];$('q').value=m?m.code:fk;segTab='plan';showMachine(fk);window.scrollTo({top:0,behavior:'smooth'})}
-let dueCache=[],badCache=[];
+let dueCache=[],badCache=[],FAMSEL=null,FAMLIST=[];
+const EXTRA_SPEC='Toothed belt – เส้นพิเศษ (ยังไม่ระบุขนาด)';
+const isTB=f=>f==='TOOTHED BELT'; // เฉพาะ Toothed Belt หลัก (ไม่รวม Smart Tilter / Move ซึ่งเป็นสายพานคนละแบบ)
+function beltSpecs(fk){ // จาก Length Belt 1..n + Type Belt + QTY of Belt ในรายละเอียดเครื่อง
+  // QTY = จำนวนสายพานทั้งเครื่อง → แต่ละขนาดได้ floor(QTY / จำนวนขนาด) เส้น ส่วนที่เหลือเป็น “เส้นพิเศษ” (ยังไม่ระบุขนาด)
+  const d=(DIDX.get(fk)||[])[0];if(!d)return {specs:[],extra:0};let type='',qty=0;const L=[];
+  d.sh.headers.forEach((h,i)=>{const t=String(h).trim(),v=String(d.r[i]??'').trim();
+    if(/^type\s*belt$/i.test(t))type=v;
+    else if(/^qty\s*(of\s*)?belt$/i.test(t))qty=parseInt(v.replace(/,/g,''))||0;
+    else if(/^length\s*belt\s*\d*$/i.test(t)){const n=parseFloat(v.replace(/,/g,''));if(n>0)L.push(n)}});
+  const ls=[...new Set(L)];if(!ls.length)return {specs:[],extra:0};
+  const per=qty>0?Math.max(1,Math.floor(qty/ls.length)):1,extra=qty>0?Math.max(0,qty-per*ls.length):0;
+  return {specs:ls.map(l=>({spec:`Toothed belt, L = ${l} mm${type?' '+type:''}`,qty:per})),extra,qty};
+}
+/* ---------- เลือกอะไหล่ได้หลายชนิด ---------- */
+function famLabel(){const n=FAMSEL?FAMSEL.size:0;$('pFamLbl').textContent=!FAMSEL?`อะไหล่ทุกชนิด (${FAMLIST.length})`:n===1?famTitle([...FAMSEL][0]):`เลือก ${n} ชนิด`}
+function renderFamList(){
+  const q=$('pFamQ').value.trim().toUpperCase(),P=buildPlan();
+  $('pFamList').innerHTML=FAMLIST.filter(f=>!q||f.includes(q)).map(f=>`<label><input type="checkbox" value="${esc(f)}"${!FAMTMP||FAMTMP.has(f)?' checked':''}> ${esc(famTitle(f))}<span class="c">${P.cnt.get(f)}</span></label>`).join('')||'<div class="small">ไม่พบชื่ออะไหล่</div>';
+  $('pFamList').querySelectorAll('input').forEach(c=>c.onchange=()=>{if(!FAMTMP)FAMTMP=new Set(FAMLIST);c.checked?FAMTMP.add(c.value):FAMTMP.delete(c.value);if(FAMTMP.size===FAMLIST.length)FAMTMP=null;syncAll()});
+  syncAll();
+}
+let FAMTMP=null;
+function syncAll(){const n=FAMTMP?FAMTMP.size:FAMLIST.length;$('pFamAll').checked=!FAMTMP;$('pFamAll').indeterminate=!!FAMTMP&&FAMTMP.size>0;$('pFamCnt').textContent=`เลือก ${n} จาก ${FAMLIST.length}`;$('pFamOk').disabled=n===0}
+function closeFam(apply){
+  if(apply){FAMSEL=FAMTMP&&FAMTMP.size?new Set(FAMTMP):null;famLabel();renderPlan()}
+  $('pFamPop').hidden=true;$('pFamBtn').setAttribute('aria-expanded','false');
+}
+$('pFamBtn').onclick=e=>{e.stopPropagation();if(!$('pFamPop').hidden){closeFam(false);return}
+  FAMTMP=FAMSEL?new Set(FAMSEL):null;$('pFamQ').value='';renderFamList();$('pFamPop').hidden=false;$('pFamBtn').setAttribute('aria-expanded','true');setTimeout(()=>$('pFamQ').focus(),30)};
+$('pFamQ').addEventListener('input',renderFamList);
+$('pFamAll').onchange=()=>{FAMTMP=$('pFamAll').checked?null:new Set();renderFamList()};
+$('pFamOk').onclick=()=>closeFam(true);
+document.addEventListener('click',e=>{if(!$('pFamPop').hidden&&!$('pFamBox').contains(e.target))closeFam(false)});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('pFamPop').hidden)closeFam(false)});
 function renderPlan(){
   if(!ST.sheets.length){for(const id of ['pForecast','pDue','pBad'])$(id).innerHTML='';return}
   const r=getRange();if(!r){$('pForecast').innerHTML='<div class="empty">เลือกวันที่ “ถึง” ให้อยู่หลังวันที่ “ตั้งแต่”</div>';return}
-  const [a,b]=r,fam=$('pFam').value,F=forecast(a,b,fam);
+  const [a,b]=r,fs=FAMSEL,F=forecast(a,b,fs);
   const max=Math.max(1,...F.rows.map(x=>Math.max(x.hi,x.actual||0)));
   const tot={exp:F.total.exp,lo:F.total.lo,hi:F.total.hi,act:F.total.actual||0};
   $('pForecast').innerHTML=`<div class="panel"><span class="kind">พยากรณ์จำนวนอะไหล่</span><h2>คาดว่าจะใช้อะไหล่ ${fmtD(a)} – ${fmtD(b)} <span class="chip">${F.N} วัน</span></h2>
     <div class="small">คำนวณจากอัตราการเสียปกติรายเดือนย้อนหลัง 12 เดือน ผสมกับ 90 วันล่าสุด ก่อน ${fmtD(F.asOf)} · ทดสอบย้อนหลังคลาดเคลื่อนรายชนิดราว 35–40% ใช้เป็นตัวเลขตั้งต้นสำหรับสต็อก ไม่ใช่ยอดตายตัว${F.past?' · ช่วงนี้มีข้อมูลจริงแล้ว จึงแสดงคู่กับของจริงให้เทียบความแม่นได้':''}${F.partial?' (ของจริงนับถึงวันนี้)':''}</div></div>
-    <div class="tbl"><table class="fc"><thead><tr><th>อะไหล่</th><th>คาดว่าใช้</th><th>ช่วงที่เป็นไปได้</th>${F.past?'<th>ใช้จริง</th>':''}<th class="barh"></th></tr></thead><tbody>
-    ${F.rows.slice(0,fam?1:15).map(x=>`<tr><td class="wr">${esc(famTitle(x.f))}</td><td><b>${Math.round(x.exp)}</b></td><td>${Math.round(x.lo)} – ${Math.round(x.hi)}</td>${F.past?`<td>${x.actual}</td>`:''}
+    <div class="tbl${F.rows.length>16?' scroll':''}"><table class="fc"><thead><tr><th>อะไหล่</th><th>คาดว่าใช้</th><th>ช่วงที่เป็นไปได้</th>${F.past?'<th>ใช้จริง</th>':''}<th class="barh"></th></tr></thead><tbody>
+    ${F.rows.map(x=>`<tr><td class="wr">${esc(famTitle(x.f))}</td><td><b>${Math.round(x.exp)}</b></td><td>${Math.round(x.lo)} – ${Math.round(x.hi)}</td>${F.past?`<td>${x.actual}</td>`:''}
       <td class="barc"><div class="bar"><i class="rng" style="left:${x.lo/max*100}%;width:${Math.max(.5,(x.hi-x.lo)/max*100)}%"></i><i class="pt" style="left:${x.exp/max*100}%"></i>${F.past&&x.actual!==null?`<i class="act" style="left:${x.actual/max*100}%"></i>`:''}</div></td></tr>`).join('')}
-    ${!fam?`<tr class="tot"><td>รวมทุกชนิด</td><td><b>${Math.round(tot.exp)}</b></td><td>${Math.round(tot.lo)} – ${Math.round(tot.hi)}</td>${F.past?`<td>${tot.act}</td>`:''}<td></td></tr>`:''}
+    ${F.rows.length>1?`<tr class="tot"><td>${fs?`รวม ${F.rows.length} ชนิดที่เลือก`:'รวมทุกชนิด'}</td><td><b>${Math.round(tot.exp)}</b></td><td>${Math.round(tot.lo)} – ${Math.round(tot.hi)}</td>${F.past?`<td>${tot.act}</td>`:''}<td></td></tr>`:''}
     </tbody></table></div><div class="pnote"><span class="lg"><i class="pt"></i>ค่าที่คาด</span><span class="lg"><i class="rng"></i>ช่วงที่เป็นไปได้ (80%)</span>${F.past?'<span class="lg"><i class="act"></i>ใช้จริง</span>':''}</div>`;
-  dueCache=dueList(a,b,fam);
+  dueCache=dueList(a,b,fs);const specRows=specCount(dueCache);
   const dueN=new Set(dueCache.map(x=>x.fk)).size;
   $('pDue').innerHTML=`<div class="panel"><span class="kind">แผนเปลี่ยนรายเครื่อง</span><h2>ถึงช่วงควรตรวจ/เปลี่ยนในช่วงนี้ <span class="chip">${dueN.toLocaleString()} เครื่อง</span></h2>
     <div class="btns"><button class="ghost sm" type="button" id="pDueXl">ดาวน์โหลดรายการเป็น Excel</button></div></div>
+    ${specSummary(dueCache)}
     ${dueCache.length?`<div class="tbl scroll"><table><thead><tr><th>เครื่องจักร</th><th>อะไหล่</th><th>ล่าสุด</th><th>ช่วงควรตรวจ/เปลี่ยน</th><th>สถานะวันนี้</th></tr></thead><tbody>
-    ${dueCache.slice(0,300).map((x,i)=>`<tr class="${x.cls!=='ok'?x.cls:''}"><td><button class="lnk" type="button" data-fk="${esc(x.fk)}">${esc(x.code)}</button></td><td class="wr">${esc(famTitle(x.f))}${x.open?' <span class="st off">DM ค้าง</span>':''}</td><td>${fmtD(x.base)}</td><td>${fmtD(x.from)} – ${fmtD(x.to)}</td><td><span class="st ${x.cls}">${PLAN_LBL[x.cls]}</span></td></tr>`).join('')}
+    ${dueCache.slice(0,300).map((x,i)=>`<tr class="${x.cls!=='ok'?x.cls:''}"><td><button class="lnk" type="button" data-fk="${esc(x.fk)}">${esc(x.code)}</button></td><td class="wr${x.tb?' spec':''}">${esc(x.spec)}${x.tb?` <b>× ${x.qty||1}</b>`:''}${x.open?' <span class="st off">DM ค้าง</span>':''}</td><td>${fmtD(x.base)}</td><td>${fmtD(x.from)} – ${fmtD(x.to)}</td><td><span class="st ${x.cls}">${PLAN_LBL[x.cls]}</span></td></tr>`).join('')}
     </tbody></table></div>${dueCache.length>300?`<div class="pnote">แสดง 300 จาก ${dueCache.length.toLocaleString()} รายการ ดาวน์โหลด Excel เพื่อดูทั้งหมด</div>`:''}`:'<div class="empty">ไม่มีเครื่องที่ถึงช่วงควรตรวจ/เปลี่ยนในช่วงนี้</div>'}`;
-  $('pDueXl').onclick=()=>downloadBook([{name:'แผนเปลี่ยนอะไหล่',headers:['เครื่องจักร','อะไหล่','เสีย/เปลี่ยนล่าสุด','เริ่มช่วงควรตรวจ','ค่ากลาง','สิ้นสุดช่วง','สถานะวันนี้','มี DM ค้าง'],
-    rows:dueCache.map(x=>[x.code,famTitle(x.f),fmtD(x.base),fmtD(x.from),fmtD(x.mid),fmtD(x.to),PLAN_LBL[x.cls],x.open?'ใช่':''])}],`plan-${$('pFrom').value}_${$('pTo').value}.xlsx`,'pStatus');
+  $('pDueXl').onclick=()=>downloadBook([{name:'แผนเปลี่ยนอะไหล่',headers:['เครื่องจักร','อะไหล่','ขนาด/สเปก','จำนวนเส้น','เสีย/เปลี่ยนล่าสุด','เริ่มช่วงควรตรวจ','ค่ากลาง','สิ้นสุดช่วง','สถานะวันนี้','มี DM ค้าง'],
+    rows:dueCache.map(x=>[x.code,famTitle(x.f),x.spec,x.tb?(x.qty||1):'',fmtD(x.base),fmtD(x.from),fmtD(x.mid),fmtD(x.to),PLAN_LBL[x.cls],x.open?'ใช่':''])},...(specRows.length?[{name:'สรุปขนาดสายพาน',headers:['ขนาด','จำนวนเส้น','ตำแหน่ง','เส้นที่เข้าช่วงแล้ววันนี้','เส้นที่มี DM ค้าง'],rows:specRows.map(x=>[x.spec,x.q,x.n,x.soon,x.open])}]:[])],`plan-${$('pFrom').value}_${$('pTo').value}.xlsx`,'pStatus');
   renderBad();
   $('v-plan').querySelectorAll('[data-fk]').forEach(b=>b.onclick=()=>openMachine(b.dataset.fk));
 }
+function specCount(list){const m=new Map();for(const x of list)if(x.tb){const k=x.spec,q=x.qty||1;const c=m.get(k)||{spec:k,n:0,q:0,open:0,soon:0,extra:!!x.extra};c.n++;c.q+=q;if(x.open)c.open+=q;if(x.cls!=='ok')c.soon+=q;m.set(k,c)}return [...m.values()].sort((a,b)=>(a.extra-b.extra)||b.q-a.q||a.spec.localeCompare(b.spec))}
+function specSummary(list){const rows=specCount(list);if(!rows.length)return '';
+  const sized=rows.filter(x=>!x.extra),ex=rows.find(x=>x.extra);
+  return `<div class="phead">สรุปขนาดสายพานที่ต้องเตรียม <span class="chip">${sized.length} ขนาด · ${sized.reduce((s,x)=>s+x.q,0).toLocaleString()} เส้น</span>${ex?` <span class="chip">+ เส้นพิเศษ ${ex.q.toLocaleString()} เส้น</span>`:''}</div>
+   <div class="tbl scroll" style="max-height:280px"><table><thead><tr><th>ขนาด</th><th>จำนวนเส้น</th><th>ตำแหน่ง</th><th>เส้นที่เข้าช่วงแล้ววันนี้</th><th>เส้นที่มี DM ค้าง</th></tr></thead><tbody>
+   ${rows.map(x=>`<tr${x.extra?' class="tot"':''}><td class="spec">${esc(x.spec)}</td><td><b>${x.q.toLocaleString()}</b></td><td>${x.n}</td><td>${x.soon||'—'}</td><td>${x.open||'—'}</td></tr>`).join('')}</tbody></table></div>
+   <div class="pnote">จำนวนเส้นต่อขนาด = QTY of Belt ÷ จำนวนขนาดของเครื่อง (ปัดลง) ส่วนที่หารไม่ลงตัวนับเป็น “เส้นพิเศษ” แยกไว้ ถ้าไม่มีข้อมูล QTY นับ 1 เส้นต่อขนาด</div><div class="phead">รายการรายเครื่อง</div>`}
 function renderBad(){
-  const days=+$('pBadDays').value,fam=$('pFam').value,B=badActors(days,fam);badCache=B.list;
+  const days=+$('pBadDays').value,B=badActors(days,FAMSEL);badCache=B.list;
   $('pBad').innerHTML=`<div class="panel"><span class="kind">Bad actor</span><h2>เครื่องที่เสียบ่อย</h2>
     <label class="field inl"><span>ดูย้อนหลัง</span><select id="pBadDays2">${[90,180,365,730].map(d=>`<option value="${d}"${d===days?' selected':''}>${d} วัน</option>`).join('')}</select></label>
     <div class="small">${B.list.length.toLocaleString()} เครื่องมี DM ในช่วงนี้ · เฉลี่ย ${B.avg.toFixed(1)} ครั้ง/เครื่อง${B.bt?` · ทดสอบย้อนหลัง: เครื่องที่เสียบ่อยสุด 10% เกิด DM ใหม่ภายใน 90 วัน ${Math.round(B.bt.top*100)}% เทียบค่าเฉลี่ย ${Math.round(B.bt.all*100)}%`:''}</div></div>
@@ -1577,7 +1651,6 @@ function renderBad(){
 }
 document.querySelectorAll('#pPresets button').forEach(b=>b.onclick=()=>{setPreset(b.dataset.p);renderPlan()});
 for(const id of ['pFrom','pTo'])$(id).addEventListener('change',()=>{document.querySelectorAll('#pPresets button').forEach(x=>x.setAttribute('aria-pressed','false'));renderPlan()});
-$('pFam').addEventListener('change',renderPlan);
 
 /* ---------- ความปลอดภัย: ล็อกอิน + เข้ารหัสข้อมูล (AES-256-GCM, PBKDF2-SHA256) + สิทธิ์ผู้ใช้ ---------- */
 const UKEY='machine-users-cache-v1',SESS='machine-session-v1',PBKDF2_ITER=600000;
