@@ -243,8 +243,10 @@ dl>:nth-last-child(-n+2){border-bottom:0}
 @media (prefers-reduced-motion:no-preference){#out .card{animation:in .2s ease-out}@keyframes in{from{transform:translateY(6px);opacity:.6}}}
 
 /* ---------- planning ---------- */
-.prange{display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:10px}
-@media (max-width:560px){.prange{grid-template-columns:1fr 1fr}.prange .field:last-child{grid-column:1/-1}}
+.prange{display:grid;grid-template-columns:1fr 1fr 1.4fr 1.1fr;gap:10px}
+@media (max-width:900px){.prange{grid-template-columns:1fr 1fr}}
+@media (max-width:560px){.prange .field:nth-child(n+3){grid-column:1/-1}}
+.tbl tr.pick{cursor:pointer}.tbl tr.pick:hover td{background:var(--surface-2)}.tbl tr.sel td{background:color-mix(in srgb,var(--accent) 12%,transparent)}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chips button{font-size:13px;font-weight:500;padding:5px 12px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);color:var(--fg)}
 .chips button[aria-pressed="true"]{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;border-color:transparent}
@@ -323,7 +325,7 @@ dl>:nth-last-child(-n+2){border-bottom:0}
 
 /* ---------- admin ---------- */
 .panel{padding:18px;display:flex;flex-direction:column;gap:12px}
-.panel h2{font-family:var(--f-display);font-size:22px;margin:0;letter-spacing:.02em;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.panel h2{font-family:var(--f-display);font-size:22px;margin:0;letter-spacing:.02em;display:flex;flex-wrap:wrap;justify-content:flex-start;align-items:center;gap:6px 8px}
 .kind{font-size:12px;font-weight:600;letter-spacing:.06em;color:var(--accent);text-transform:uppercase}
 .field{display:flex;flex-direction:column;gap:4px;min-width:0}
 .field>span{font-size:13px;color:var(--muted)}
@@ -467,6 +469,7 @@ details ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
         <label class="field"><span>ตั้งแต่</span><input type="date" id="pFrom"></label>
         <label class="field"><span>ถึง</span><input type="date" id="pTo"></label>
         <label class="field"><span>อะไหล่</span><select id="pFam"></select></label>
+        <label class="field"><span>พื้นที่</span><select id="pArea"></select></label>
       </div>
       <div class="chips" id="pPresets">
         <button type="button" data-p="next30" aria-pressed="false">30 วันข้างหน้า</button>
@@ -481,6 +484,7 @@ details ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
       <div class="status" id="pStatus" role="status"></div>
     </div></div>
     <div class="card span2" id="pForecast"></div>
+    <div class="card span2" id="pAreaCmp"></div>
     <div class="card" id="pDue"></div>
     <div class="card" id="pBad"></div>
   </section>
@@ -657,7 +661,7 @@ let DB=SAMPLE,INDEX=[],draft=null,dirty=0,GH=null,sel=null,ST={sheets:[]},SIDX=n
 function codeIdx(sh){
   let best=-1,bc=0;
   for(let c=0;c<sh.headers.length;c++){let k=0;for(const r of sh.rows)if(/^LP\d/.test(norm(r[c])))k++;if(k>bc){bc=k;best=c}}
-  if(best<0){best=sh.headers.findIndex(h=>/รหัส|code|ตำแหน่ง|tag|id/i.test(h));if(best<0)best=0}
+  if(best<0){best=sh.headers.findIndex(h=>/^\s*outfit\s*$/i.test(h));if(best<0)best=sh.headers.findIndex(h=>/รหัส|code|ตำแหน่ง|tag|id/i.test(h));if(best<0)best=0}
   return best;
 }
 const toks=s=>(String(s||'').toUpperCase().match(/[A-Z]+|\d+/g)||[]).map(t=>/^\d/.test(t)?String(+t):t); // เลขตัด 0 นำหน้า
@@ -669,7 +673,7 @@ function buildIndex(){
   const src=MIDX.size?[...MIDX.values()]:[...new Map(INDEX.map(e=>[e.fk,e])).values()];
   UNIV=src.map(e=>({code:e.code,fk:e.fk,t:toks(e.code)}));
   const when=DB.updatedAt?new Date(DB.updatedAt).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'}):'';
-  buildStatusIndex();PLAN=null;
+  buildStatusIndex();linkShortCodes();PLAN=null;
   const sw=ST.updatedAt?new Date(ST.updatedAt).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'}):'';
   const mw=MC.updatedAt?new Date(MC.updatedAt).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'}):'';
   $('dbfoot').innerHTML=`${MIDX.size?`เครื่องจักรทั้งหมด ${MIDX.size.toLocaleString()} เครื่อง${mw?' · อัปเดต '+esc(mw):''}<br>`:''}รายละเอียด ${INDEX.length.toLocaleString()} เครื่อง${when?' · อัปเดต '+esc(when):''}${ST.sheets.length?`<br>สถานะ DM ${ST.sheets.reduce((n,s)=>n+s.rows.length,0).toLocaleString()} รายการ${sw?' · อัปเดต '+esc(sw):''}`:''}${DB.sample?'<span class="tag-sample">ข้อมูลตัวอย่าง</span>':''}`;
@@ -710,6 +714,29 @@ function stClass(v){v=String(v||'').trim(); // ระดับความเส
   if(!v)return '';if(/ปิดใช้งาน|disable/i.test(v))return 'off';if(/ปิด\s*DM|close|เสร็จ|done|complete/i.test(v))return 'ok';
   if(/ระดับ\s*1|level\s*1/i.test(v))return 'l1';if(/ระดับ\s*[23]|level\s*[23]/i.test(v))return 'l2';return 'l1'}
 const HIDE_COLS=/^(no\.?|แผนการแก้ไข|รายละเอียด|machine type|สาเหตุการชำรุด)$/i; // คอลัมน์ที่ไม่แสดงในหน้าสถานะ
+let LINKED={n:0,guess:0,none:0};
+function linkShortCodes(){ // แท็บ Belt-SAT / Belt-MTB เขียนรหัสย่อ เช่น EBS012-01, LF010-01 → จับคู่กับตำแหน่งเต็ม LP281-EBS012-01
+  const SH=new Map(),GP=new Map(),FULL=/^((?:LP|EP)\d+)-(.+)$/;
+  const addFull=c=>{c=norm(c);const m=c.match(FULL);if(!m)return;const st=toks(m[2]);if(!st.length)return;
+    const k=st.join('|');let x=SH.get(k);if(!x)SH.set(k,x=new Set());x.add(c);
+    if(st.length>=2){const g=st[0]+'|'+st[1];let p=GP.get(g);if(!p)GP.set(g,p=new Map());p.set(m[1],(p.get(m[1])||0)+1)}};
+  for(const m of MIDX.values())addFull(m.code);
+  for(const e of INDEX)addFull(e.code);
+  for(const v of SIDX.values())for(const x of v)addFull(x.r[x.sh._c.mi]);
+  const have=new Set(UNIV.map(u=>u.fk));LINKED={n:0,guess:0,none:0};
+  for(const e of INDEX){
+    if(FULL.test(e.code)||MIDX.has(e.fk))continue;
+    const st=toks(e.code);if(st.length<2)continue;
+    let c=[...(SH.get(st.join('|'))||[])],guessed=false;
+    if(!c.length){const p=GP.get(st[0]+'|'+st[1]);if(p){c=[[...p.entries()].sort((a,b)=>b[1]-a[1])[0][0]+'-'+e.code];guessed=true}}
+    if(!c.length){LINKED.none++;continue}
+    LINKED.n++;if(guessed)LINKED.guess++;
+    for(const full of c){const fk=fkey(full);const x={...e,code:full,fk,alias:e.code,guessed};
+      if(!DIDX.has(fk))DIDX.set(fk,[]);DIDX.get(fk).push(x);
+      if(!have.has(fk)){have.add(fk);UNIV.push({code:full,fk,t:toks(full)})}}
+    const left=(DIDX.get(e.fk)||[]).filter(y=>y!==e);if(left.length)DIDX.set(e.fk,left);else DIDX.delete(e.fk);
+  }
+}
 function buildStatusIndex(src){
   const S=src||ST,fks=new Set([...INDEX.map(e=>e.fk),...MIDX.keys()]),idx=new Map();let n=0,matched=0;
   for(const sh of S.sheets){const c=statusCols(sh,fks);sh._c=c;
@@ -769,7 +796,7 @@ function hl(code,q){const qt=new Set(toks(q));return esc(code).replace(/[A-Z]+|\
 function showMachine(fk,quiet,guessFrom){ // ขั้นที่ 4–5: ดึงรายละเอียด + สถานะ DM แล้วแสดงผล
   const m=MIDX.get(fk),dets=DIDX.get(fk)||[],recs=SIDX.get(fk)||[],code=(m&&m.code)||(dets[0]&&dets[0].code)||fk;
   const items=[],seen=new Set();
-  const add=(h,v)=>{h=String(h||'').trim();v=String(v??'').trim();if(!v||seen.has(h.toLowerCase()))return;seen.add(h.toLowerCase());items.push([h,v])};
+  const add=(h,v)=>{h=String(h||'').trim();v=String(v??'').trim();if(!v||v==='-'||seen.has(h.toLowerCase()))return;seen.add(h.toLowerCase());items.push([h,v])};
   if(m)m.sh.headers.forEach((h,i)=>{if(i!==m.ci)add(h,m.r[i])});
   for(const e of dets)e.sh.headers.forEach((h,i)=>{if(i!==e.ci)add(h,e.r[i])});
   let open=0,worst='';
@@ -783,7 +810,7 @@ function showMachine(fk,quiet,guessFrom){ // ขั้นที่ 4–5: ดึ
      <button type="button" role="tab" data-t="st" aria-selected="${segTab==='st'}">${pl?'สถานะ DM':'สถานะเครื่องจักร'}<span class="n ${worst}">${open?open+' ค้าง':recs.length}</span></button>
      ${pl?`<button type="button" role="tab" data-t="plan" aria-selected="${segTab==='plan'}">แผนเปลี่ยน</button>`:''}
    </div>
-   <div data-p="info"${segTab==='info'?'':' hidden'}>${dets.length?'':'<div class="nodata">ยังไม่มีรายละเอียดสเปกของเครื่องนี้ในระบบ</div>'}${items.length?`<dl>${items.map(([h,v])=>`<dt>${esc(h||'—')}</dt><dd>${esc(v)}</dd>`).join('')}</dl>`:''}</div>
+   <div data-p="info"${segTab==='info'?'':' hidden'}>${dets.length?(dets[0].alias?`<div class="nodata">ในไฟล์รายละเอียด (แท็บ ${esc(dets[0].sh.name)}) เขียนว่า “<b>${esc(dets[0].alias)}</b>” ${dets[0].guessed?'ระบบเดาเลข Line จากเครื่องอื่นในกลุ่มเดียวกัน':'ระบบจับคู่กับตำแหน่งเต็มให้แล้ว'}</div>`:''):'<div class="nodata">ยังไม่มีรายละเอียดสเปกของเครื่องนี้ในระบบ</div>'}${items.length?`<dl>${items.map(([h,v])=>`<dt>${esc(h||'—')}</dt><dd>${esc(v)}</dd>`).join('')}</dl>`:''}</div>
    <div data-p="st"${segTab==='st'?'':' hidden'}>${statusHTML(recs)}</div>
    ${pl?`<div data-p="plan"${segTab==='plan'?'':' hidden'}>${planHTML(fk)}</div>`:''}</article>`;
   bindTimeline($('out'));
@@ -1388,6 +1415,9 @@ function famOf(sym,part){ // จัดกลุ่มอะไหล่จาก
   return t.length>=3?t:'';
 }
 let PLAN=null;
+const NOAREA='No Area',TMS='TMS';
+const isTray=c=>/^([ML]-)?TRAY/.test(norm(c)); // M-Tray NO-xxxx / L-Tray NO-xxx / Tray-xxxxx → พื้นที่ TMS
+function areaOf(fk){const d=(DIDX.get(fk)||[])[0];if(!d)return '';const i=d.sh.headers.findIndex(h=>/^sub\s*area$/i.test(String(h).trim()));return i<0?'':String(d.r[i]??'').trim()}
 function buildPlan(){ // ทำดัชนีเหตุการณ์ชำรุด + สถิติอายุอะไหล่ทั้งโรงงาน (คำนวณครั้งเดียวต่อชุดข้อมูล)
   if(PLAN)return PLAN;
   const EV=[],byKey=new Map(),byM=new Map();
@@ -1412,7 +1442,19 @@ function buildPlan(){ // ทำดัชนีเหตุการณ์ชำ�
   const fams=[...cnt.entries()].sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
   const maxD=EV.reduce((m,e)=>Math.max(m,e.d),0);
   const minD=EV.reduce((m,e)=>Math.min(m,e.d),Infinity);
-  return PLAN={EV,byKey,byM,FS,fams,cnt,maxD,minD:isFinite(minD)?minD:0};
+  // พื้นที่ (Sub Area) จากรายละเอียดเครื่อง
+  const areaN=new Map(),noA=new Set();
+  for(const k of DIDX.keys()){const a=areaOf(k)||NOAREA;areaN.set(a,(areaN.get(a)||0)+1)}
+  // DM ที่ลงรหัสระดับ Line หรือชิ้นส่วนย่อย (เช่น LP283-MU050, LP233-MU057-PM006) ที่ไม่มีในไฟล์รายละเอียด → ใช้พื้นที่ส่วนใหญ่ของเครื่องใน Line เดียวกัน
+  const grp=c=>norm(c).split('-').slice(0,2).join('-'),gA=new Map();
+  for(const [k,v] of DIDX){const a=areaOf(k);if(!a)continue;const g=grp(v[0].code);let m=gA.get(g);if(!m)gA.set(g,m=new Map());m.set(a,(m.get(a)||0)+1)}
+  const gBest=new Map([...gA].map(([g,m])=>[g,[...m].sort((x,y)=>y[1]-x[1])[0][0]]));
+  const tms=new Set();for(const m of MIDX.values())if(isTray(m.code))tms.add(m.fk);
+  for(const e of EV){if(isTray(e.code)){e.area=TMS;tms.add(e.fk);continue}e.area=areaOf(e.fk)||gBest.get(grp(e.code))||NOAREA;if(e.area===NOAREA)noA.add(e.fk)}
+  if(tms.size)areaN.set(TMS,tms.size);
+  const areas=[...areaN.keys()].filter(a=>a!==NOAREA).sort((a,b)=>a.localeCompare(b));
+  if(noA.size){areas.push(NOAREA);areaN.set(NOAREA,noA.size)}
+  return PLAN={EV,byKey,byM,FS,fams,cnt,maxD,minD:isFinite(minD)?minD:0,areas,areaN};
 }
 function machinePlan(fk){ // แผนรายเครื่อง: ทุกชนิดอะไหล่ที่เครื่องนี้เคยเสีย
   const P=buildPlan(),now=Date.now(),out=[];
@@ -1499,6 +1541,9 @@ function initPlanView(){
   const cur=$('pFam').value;
   $('pFam').innerHTML=`<option value="">อะไหล่ทุกชนิด (${FAMLIST.length})</option>`+FAMLIST.map(f=>`<option value="${esc(f)}">${esc(famTitle(f))} (${P.cnt.get(f)})</option>`).join('');
   $('pFam').value=FAMLIST.includes(cur)?cur:'';famSync();
+  const ca=$('pArea').value;
+  $('pArea').innerHTML=`<option value="">ทุกพื้นที่ (${P.areas.filter(x=>x!==NOAREA).length})</option>`+P.areas.map(x=>`<option value="${esc(x)}">${esc(x)} (${P.areaN.get(x).toLocaleString()} เครื่อง)</option>`).join('');
+  $('pArea').value=P.areas.includes(ca)?ca:'';AREA=$('pArea').value;
   $('pInfo').textContent=ST.sheets.length?`คำนวณจากประวัติ DM ${P.EV.length.toLocaleString()} รายการ · ข้อมูลล่าสุด ${fmtD(P.maxD)}`:'ยังไม่มีข้อมูลสถานะ DM ให้คำนวณ นำเข้าไฟล์สถานะในหน้า Admin ก่อน';
   renderPlan();
 }
@@ -1514,9 +1559,10 @@ function setPreset(p){
   document.querySelectorAll('#pPresets button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.p===p));
 }
 function getRange(){const a=Date.parse($('pFrom').value+'T00:00'),b=Date.parse($('pTo').value+'T00:00');return (a&&b&&b>=a)?[a,b+DAY-1]:null}
-function forecast(a,b,fs){ // คาดการณ์จำนวนชิ้นในช่วง [a,b] จากข้อมูลก่อนวันเริ่ม (ถ้าช่วงอยู่ในอดีต จะเทียบกับของจริงได้)
+function forecast(a,b,fs,area,onlyTotal){ // คาดการณ์จำนวนชิ้นในช่วง [a,b] จากข้อมูลก่อนวันเริ่ม (ถ้าช่วงอยู่ในอดีต จะเทียบกับของจริงได้)
   const P=buildPlan(),asOf=Math.min(a,dayStart(Date.now())),N=Math.round((b+1-a)/DAY),now=Date.now();
-  const fams=fs?[...fs]:P.fams.filter(f=>P.cnt.get(f)>=10);
+  const famSet=fs||new Set(P.fams.filter(f=>P.cnt.get(f)>=10)),by=new Map();
+  for(const e of P.EV){if(!famSet.has(e.fam)||(area&&e.area!==area))continue;let x=by.get(e.fam);if(!x)by.set(e.fam,x=[]);x.push(e.d)}
   const one=(f,ds)=>{
     const prior=ds.filter(d=>d<asOf),n90=prior.filter(d=>d>=asOf-90*DAY).length,n365=prior.filter(d=>d>=asOf-365*DAY).length;
     let mn=asOf;for(const d of prior)if(d<mn)mn=d;
@@ -1532,7 +1578,7 @@ function forecast(a,b,fs){ // คาดการณ์จำนวนชิ้�
     return {f,exp,lo:Math.min(lo,exp),hi:Math.max(hi,exp),actual};
   };
   const rows=[],all=[];
-  for(const f of fams){const ds=[];for(const e of P.EV)if(e.fam===f)ds.push(e.d);all.push(...ds);rows.push(one(f,ds))}
+  for(const f of famSet){const ds=by.get(f)||[];for(const d of ds)all.push(d);if(!onlyTotal)rows.push(one(f,ds))}
   const total=one('',all);
   rows.sort((x,y)=>y.exp-x.exp);
   const today=dayStart(now);return {rows,total,N,asOf,past:a<today,partial:a<today&&b>now};
@@ -1542,7 +1588,7 @@ function dueList(a,b,fs){ // เครื่องที่ช่วงควร
   for(const [k,v] of P.byKey){const f=v[0].fam;if(fs&&!fs.has(f))continue;const st=P.FS.get(f);if(!st)continue;
     const last=v[v.length-1],base=last.done||last.d,from=base+st.p25*DAY,to=base+st.p75*DAY;
     if(to<a||from>b)continue;const age=(now-base)/DAY;
-    const row={fk:last.fk,code:last.code,f,base,from,to,mid:base+st.p50*DAY,cls:age<st.p25?'ok':age<st.p50?'l1':age<st.p75?'l2':'off',open:v.some(e=>e.lv&&e.lv!=='ok'),spec:famTitle(f)};
+    const row={fk:last.fk,code:last.code,area:last.area,f,base,from,to,mid:base+st.p50*DAY,cls:age<st.p25?'ok':age<st.p50?'l1':age<st.p75?'l2':'off',open:v.some(e=>e.lv&&e.lv!=='ok'),spec:famTitle(f)};
     if(isTB(f)){const B=beltSpecs(last.fk);
       if(B.specs.length){for(const x of B.specs)out.push({...row,spec:x.spec,qty:x.qty,tb:true});if(B.extra)out.push({...row,spec:EXTRA_SPEC,qty:B.extra,tb:true,extra:true});continue}
       row.spec='Toothed belt (ไม่มีข้อมูลความยาว)';row.tb=true;row.qty=1}
@@ -1550,14 +1596,14 @@ function dueList(a,b,fs){ // เครื่องที่ช่วงควร
   }
   return out.sort((x,y)=>x.mid-y.mid);
 }
-function badActors(days,fs){
+function badActors(days,fs,area){
   const P=buildPlan(),now=Date.now(),since=now-days*DAY,m=new Map();
-  for(const e of P.EV){if(e.d<since||(fs&&!fs.has(e.fam)))continue;let x=m.get(e.fk);if(!x){x={fk:e.fk,code:e.code,n:0,open:0,last:0,fams:new Map()};m.set(e.fk,x)}
+  for(const e of P.EV){if(e.d<since||(fs&&!fs.has(e.fam))||(area&&e.area!==area))continue;let x=m.get(e.fk);if(!x){x={fk:e.fk,code:e.code,n:0,open:0,last:0,fams:new Map()};m.set(e.fk,x)}
     x.n++;if(e.lv&&e.lv!=='ok')x.open++;x.last=Math.max(x.last,e.d);if(e.fam)x.fams.set(e.fam,(x.fams.get(e.fam)||0)+1)}
   const list=[...m.values()].sort((a,b)=>b.n-a.n||b.last-a.last);
   // ทดสอบย้อนหลัง: ณ 90 วันก่อน เครื่องที่เสียบ่อยสุด 10% เกิด DM ใหม่ใน 90 วันถัดมากี่ %
   const cut=now-90*DAY,cnt=new Map(),after=new Set();
-  for(const e of P.EV){if(fs&&!fs.has(e.fam))continue;if(e.d<cut&&e.d>=cut-days*DAY)cnt.set(e.fk,(cnt.get(e.fk)||0)+1);else if(e.d>=cut)after.add(e.fk)}
+  for(const e of P.EV){if((fs&&!fs.has(e.fam))||(area&&e.area!==area))continue;if(e.d<cut&&e.d>=cut-days*DAY)cnt.set(e.fk,(cnt.get(e.fk)||0)+1);else if(e.d>=cut)after.add(e.fk)}
   const ks=[...cnt.entries()].sort((a,b)=>b[1]-a[1]),top=ks.slice(0,Math.max(1,Math.floor(ks.length/10)));
   const rate=arr=>arr.length?arr.filter(([k])=>after.has(k)).length/arr.length:0;
   return {list,avg:list.length?list.reduce((s,x)=>s+x.n,0)/list.length:0,bt:ks.length>=50?{top:rate(top),all:rate(ks)}:null};
@@ -1577,38 +1623,65 @@ function beltSpecs(fk){ // จาก Length Belt 1..n + Type Belt + QTY of Belt 
   const per=qty>0?Math.max(1,Math.floor(qty/ls.length)):1,extra=qty>0?Math.max(0,qty-per*ls.length):0;
   return {specs:ls.map(l=>({spec:`Toothed belt, L = ${l} mm${type?' '+type:''}`,qty:per})),extra,qty};
 }
+let AREA='';
+function setArea(x){AREA=x;$('pArea').value=x;renderPlan()}
+$('pArea').addEventListener('change',()=>setArea($('pArea').value));
 function famSync(){FAMSEL=$('pFam').value?new Set([$('pFam').value]):null}
 $('pFam').addEventListener('change',()=>{famSync();renderPlan()});
 function renderPlan(){
-  if(!ST.sheets.length){for(const id of ['pForecast','pDue','pBad'])$(id).innerHTML='';return}
+  if(!ST.sheets.length){for(const id of ['pForecast','pAreaCmp','pDue','pBad'])$(id).innerHTML='';return}
   const r=getRange();if(!r){$('pForecast').innerHTML='<div class="empty">เลือกวันที่ “ถึง” ให้อยู่หลังวันที่ “ตั้งแต่”</div>';return}
-  const [a,b]=r,fs=FAMSEL,F=forecast(a,b,fs),P=buildPlan();
-  if(P.minD&&a<=P.minD)$('pForecast').innerHTML=histHTML(F,a,Math.min(b,Date.now()),fs);else{
+  const [a,b]=r,fs=FAMSEL,F=forecast(a,b,fs,AREA),P=buildPlan(),hist=!!(P.minD&&a<=P.minD);
+  if(hist)$('pForecast').innerHTML=histHTML(F,a,Math.min(b,Date.now()),fs);else{
   const max=Math.max(1,...F.rows.map(x=>Math.max(x.hi,x.actual||0)));
   const tot={exp:F.total.exp,lo:F.total.lo,hi:F.total.hi,act:F.total.actual||0};
-  $('pForecast').innerHTML=`<div class="panel"><span class="kind">พยากรณ์จำนวนอะไหล่</span><h2>คาดว่าจะใช้อะไหล่ ${fmtD(a)} – ${fmtD(b)} <span class="chip">${F.N} วัน</span></h2>
+  $('pForecast').innerHTML=`<div class="panel"><span class="kind">พยากรณ์จำนวนอะไหล่</span><h2>คาดว่าจะใช้อะไหล่ ${fmtD(a)} – ${fmtD(b)} <span class="chip">${F.N} วัน</span>${AREA?` <span class="chip">${esc(AREA)}</span>`:''}</h2>
     <div class="small">คำนวณจากอัตราการเสียปกติรายเดือนย้อนหลัง 12 เดือน ผสมกับ 90 วันล่าสุด ก่อน ${fmtD(F.asOf)} · ทดสอบย้อนหลังคลาดเคลื่อนรายชนิดราว 35–40% ใช้เป็นตัวเลขตั้งต้นสำหรับสต็อก ไม่ใช่ยอดตายตัว${F.past?' · ช่วงนี้มีข้อมูลจริงแล้ว จึงแสดงคู่กับของจริงให้เทียบความแม่นได้':''}${F.partial?' (ของจริงนับถึงวันนี้)':''}</div></div>
     <div class="tbl${F.rows.length>16?' scroll':''}"><table class="fc"><thead><tr><th>อะไหล่</th><th>คาดว่าใช้</th><th>ช่วงที่เป็นไปได้</th>${F.past?'<th>ใช้จริง</th>':''}<th class="barh"></th></tr></thead><tbody>
     ${F.rows.map(x=>`<tr><td class="wr">${esc(famTitle(x.f))}</td><td><b>${Math.round(x.exp)}</b></td><td>${Math.round(x.lo)} – ${Math.round(x.hi)}</td>${F.past?`<td>${x.actual}</td>`:''}
       <td class="barc"><div class="bar"><i class="rng" style="left:${x.lo/max*100}%;width:${Math.max(.5,(x.hi-x.lo)/max*100)}%"></i><i class="pt" style="left:${x.exp/max*100}%"></i>${F.past&&x.actual!==null?`<i class="act" style="left:${x.actual/max*100}%"></i>`:''}</div></td></tr>`).join('')}
     ${F.rows.length>1?`<tr class="tot"><td>${fs?`รวม ${F.rows.length} ชนิดที่เลือก`:'รวมทุกชนิด'}</td><td><b>${Math.round(tot.exp)}</b></td><td>${Math.round(tot.lo)} – ${Math.round(tot.hi)}</td>${F.past?`<td>${tot.act}</td>`:''}<td></td></tr>`:''}
     </tbody></table></div><div class="pnote"><span class="lg"><i class="pt"></i>ค่าที่คาด</span><span class="lg"><i class="rng"></i>ช่วงที่เป็นไปได้ (80%)</span>${F.past?'<span class="lg"><i class="act"></i>ใช้จริง</span>':''}</div>`;}
-  dueCache=dueList(a,b,fs);const specRows=specCount(dueCache);
+  const dueAll=dueList(a,b,fs);dueCache=AREA?dueAll.filter(x=>x.area===AREA):dueAll;
+  $('pAreaCmp').innerHTML=areaHTML(a,b,fs,F,hist,dueAll);
+  $('pAreaCmp').querySelectorAll('tr[data-area]').forEach(t=>t.onclick=()=>setArea(t.dataset.area===AREA?'':t.dataset.area));
+  $('pAreaXl').onclick=()=>downloadBook([{name:'เทียบพื้นที่',headers:AREA_COLS(F,hist),rows:areaCache.map(x=>[x.area,x.n,x.v,x.per100==null?'':+x.per100.toFixed(1),x.due,x.open])}],`area-${$('pFrom').value}_${$('pTo').value}.xlsx`,'pStatus');
+  const specRows=specCount(dueCache);
   const dueN=new Set(dueCache.map(x=>x.fk)).size;
-  $('pDue').innerHTML=`<div class="panel"><span class="kind">แผนเปลี่ยนรายเครื่อง</span><h2>ถึงช่วงควรตรวจ/เปลี่ยนในช่วงนี้ <span class="chip">${dueN.toLocaleString()} เครื่อง</span></h2>
+  $('pDue').innerHTML=`<div class="panel"><span class="kind">แผนเปลี่ยนรายเครื่อง</span><h2>ถึงช่วงควรตรวจ/เปลี่ยนในช่วงนี้ <span class="chip">${dueN.toLocaleString()} เครื่อง</span>${AREA?` <span class="chip">${esc(AREA)}</span>`:''}</h2>
     <div class="btns"><button class="ghost sm" type="button" id="pDueXl">ดาวน์โหลดรายการเป็น Excel</button></div></div>
     ${specSummary(dueCache)}
     ${dueCache.length?`<div class="tbl scroll"><table><thead><tr><th>เครื่องจักร</th><th>อะไหล่</th><th>ล่าสุด</th><th>ช่วงควรตรวจ/เปลี่ยน</th><th>สถานะวันนี้</th></tr></thead><tbody>
     ${dueCache.slice(0,300).map((x,i)=>`<tr class="${x.cls!=='ok'?x.cls:''}"><td><button class="lnk" type="button" data-fk="${esc(x.fk)}">${esc(x.code)}</button></td><td class="wr${x.tb?' spec':''}">${esc(x.spec)}${x.tb?` <b>× ${x.qty||1}</b>`:''}${x.open?' <span class="st off">DM ค้าง</span>':''}</td><td>${fmtD(x.base)}</td><td>${fmtD(x.from)} – ${fmtD(x.to)}</td><td><span class="st ${x.cls}">${PLAN_LBL[x.cls]}</span></td></tr>`).join('')}
     </tbody></table></div>${dueCache.length>300?`<div class="pnote">แสดง 300 จาก ${dueCache.length.toLocaleString()} รายการ ดาวน์โหลด Excel เพื่อดูทั้งหมด</div>`:''}`:'<div class="empty">ไม่มีเครื่องที่ถึงช่วงควรตรวจ/เปลี่ยนในช่วงนี้</div>'}`;
-  $('pDueXl').onclick=()=>downloadBook([{name:'แผนเปลี่ยนอะไหล่',headers:['เครื่องจักร','อะไหล่','ขนาด/สเปก','จำนวนเส้น','เสีย/เปลี่ยนล่าสุด','เริ่มช่วงควรตรวจ','ค่ากลาง','สิ้นสุดช่วง','สถานะวันนี้','มี DM ค้าง'],
-    rows:dueCache.map(x=>[x.code,famTitle(x.f),x.spec,x.tb?(x.qty||1):'',fmtD(x.base),fmtD(x.from),fmtD(x.mid),fmtD(x.to),PLAN_LBL[x.cls],x.open?'ใช่':''])},...(specRows.length?[{name:'สรุปขนาดสายพาน',headers:['ขนาด','จำนวนเส้น','ตำแหน่ง','เส้นที่เข้าช่วงแล้ววันนี้','เส้นที่มี DM ค้าง'],rows:specRows.map(x=>[x.spec,x.q,x.n,x.soon,x.open])}]:[])],`plan-${$('pFrom').value}_${$('pTo').value}.xlsx`,'pStatus');
+  $('pDueXl').onclick=()=>downloadBook([{name:'แผนเปลี่ยนอะไหล่',headers:['เครื่องจักร','พื้นที่','อะไหล่','ขนาด/สเปก','จำนวนเส้น','เสีย/เปลี่ยนล่าสุด','เริ่มช่วงควรตรวจ','ค่ากลาง','สิ้นสุดช่วง','สถานะวันนี้','มี DM ค้าง'],
+    rows:dueCache.map(x=>[x.code,x.area,famTitle(x.f),x.spec,x.tb?(x.qty||1):'',fmtD(x.base),fmtD(x.from),fmtD(x.mid),fmtD(x.to),PLAN_LBL[x.cls],x.open?'ใช่':''])},...(specRows.length?[{name:'สรุปขนาดสายพาน',headers:['ขนาด','จำนวนเส้น','ตำแหน่ง','เส้นที่เข้าช่วงแล้ววันนี้','เส้นที่มี DM ค้าง'],rows:specRows.map(x=>[x.spec,x.q,x.n,x.soon,x.open])}]:[])],`plan-${$('pFrom').value}_${$('pTo').value}.xlsx`,'pStatus');
   renderBad();
   $('v-plan').querySelectorAll('[data-fk]').forEach(b=>b.onclick=()=>openMachine(b.dataset.fk));
 }
+let areaCache=[];
+const AREA_COLS=(F,hist)=>['พื้นที่','จำนวนเครื่อง',hist||(F.past&&!F.partial)?'ใช้จริง (ครั้ง)':'คาดว่าจะใช้ (ชิ้น)','ต่อ 100 เครื่อง','เครื่องที่ถึงรอบในช่วงนี้','เครื่องที่มี DM ค้าง'];
+function areaHTML(a,b,fs,F,hist,dueAll){ // เทียบทุกพื้นที่ในช่วงเวลา/อะไหล่ที่เลือก
+  const P=buildPlan();if(!P.areas.length)return '';
+  const act=hist||(F.past&&!F.partial),famSet=fs||new Set(P.fams.filter(f=>P.cnt.get(f)>=10)),openN=new Map(),dueN=new Map();
+  for(const e of P.EV)if(famSet.has(e.fam)&&e.lv&&e.lv!=='ok'){let s=openN.get(e.area);if(!s)openN.set(e.area,s=new Set());s.add(e.fk)}
+  for(const x of dueAll){let s=dueN.get(x.area);if(!s)dueN.set(x.area,s=new Set());s.add(x.fk)}
+  areaCache=P.areas.map(ar=>{const T=forecast(a,b,fs,ar,true).total,n=P.areaN.get(ar)||0,v=act?(T.actual||0):Math.round(T.exp);
+    return {area:ar,n,v,lo:Math.round(T.lo),hi:Math.round(T.hi),per100:ar!==NOAREA&&n?v/n*100:null,due:(dueN.get(ar)||new Set()).size,open:(openN.get(ar)||new Set()).size}})
+    .sort((x,y)=>(x.area===NOAREA)-(y.area===NOAREA)||y.v-x.v);
+  const max=Math.max(1,...areaCache.map(x=>x.v)),tot=areaCache.reduce((s,x)=>s+x.v,0),C=AREA_COLS(F,hist);
+  const top=areaCache.filter(x=>x.per100!=null).sort((x,y)=>y.per100-x.per100)[0];
+  return `<div class="panel"><span class="kind">เทียบตามพื้นที่</span><h2>พื้นที่ไหน${act?'ใช้อะไหล่':'จะต้องใช้อะไหล่'}มากที่สุด <span class="chip">${fmtD(a)} – ${fmtD(Math.min(b,act?Date.now():b))}</span>${fs&&fs.size===1?` <span class="chip">${esc(famTitle([...fs][0]))}</span>`:''}</h2>
+    <div class="small">แต่ละพื้นที่มีจำนวนเครื่องไม่เท่ากัน จึงมีคอลัมน์ “ต่อ 100 เครื่อง” ไว้เทียบแบบเป็นธรรม${top&&top.v?` · ต่อเครื่องแล้วสูงสุดคือ <b>${esc(top.area)}</b>`:''} · แตะแถวเพื่อกรองทั้งหน้าเป็นพื้นที่นั้น · “${NOAREA}” คือเครื่องที่มี DM แต่ไม่มีในไฟล์รายละเอียด · ถาด (M-Tray / L-Tray / Tray-) นับเป็นพื้นที่ TMS</div>
+    <div class="btns"><button class="ghost sm" type="button" id="pAreaXl">ดาวน์โหลดเป็น Excel</button></div></div>
+    <div class="tbl"><table class="fc"><thead><tr>${C.map(h=>`<th>${h}</th>`).join('')}<th class="barh"></th></tr></thead><tbody>
+    ${areaCache.map(x=>`<tr class="pick${x.area===AREA?' sel':''}" data-area="${esc(x.area)}"><td class="wr"><b>${esc(x.area)}</b></td><td>${x.n.toLocaleString()}</td><td><b>${x.v.toLocaleString()}</b>${act?'':` <span class="small">(${x.lo}–${x.hi})</span>`}</td><td>${x.per100==null?'—':x.per100.toFixed(1)}</td><td>${x.due.toLocaleString()}</td><td>${x.open?`<span class="st off">${x.open}</span>`:'—'}</td>
+      <td class="barc"><div class="bar"><i class="rng" style="left:0;width:${x.v/max*100}%"></i></div></td></tr>`).join('')}
+    <tr class="tot"><td>รวม</td><td>${areaCache.reduce((s,x)=>s+x.n,0).toLocaleString()}</td><td><b>${tot.toLocaleString()}</b></td><td></td><td>${areaCache.reduce((s,x)=>s+x.due,0).toLocaleString()}</td><td>${areaCache.reduce((s,x)=>s+x.open,0).toLocaleString()}</td><td></td></tr>
+    </tbody></table></div>`}
 function histHTML(F,a,b,fs){ // ช่วงที่เริ่มตั้งแต่วันแรกของข้อมูล → ไม่มีอะไรให้พยากรณ์ แสดงยอดใช้จริงทั้งหมดแทน
   const rows=F.rows.filter(x=>x.actual>0).sort((x,y)=>y.actual-x.actual),tot=rows.reduce((s,x)=>s+x.actual,0),mon=Math.max(1,(b-a)/DAY/30.44),max=Math.max(1,...rows.map(x=>x.actual));
-  return `<div class="panel"><span class="kind">ยอดใช้อะไหล่จริง</span><h2>อะไหล่ที่ใช้ไปทั้งหมด ${fmtD(a)} – ${fmtD(b)} <span class="chip">${Math.round((b-a)/DAY+1).toLocaleString()} วัน</span></h2>
+  return `<div class="panel"><span class="kind">ยอดใช้อะไหล่จริง</span><h2>อะไหล่ที่ใช้ไปทั้งหมด ${fmtD(a)} – ${fmtD(b)} <span class="chip">${Math.round((b-a)/DAY+1).toLocaleString()} วัน</span>${AREA?` <span class="chip">${esc(AREA)}</span>`:''}</h2>
     <div class="small">นับจากประวัติ DM ทุกรายการที่ระบุอะไหล่ (1 รายการ = 1 ครั้งที่เสีย/เปลี่ยน) ตั้งแต่วันแรกที่มีข้อมูลจนถึงวันนี้</div></div>
     ${rows.length?`<div class="tbl${rows.length>16?' scroll':''}"><table class="fc"><thead><tr><th>อะไหล่</th><th>ใช้จริง (ครั้ง)</th><th>เฉลี่ย/เดือน</th><th>สัดส่วน</th><th class="barh"></th></tr></thead><tbody>
     ${rows.map(x=>`<tr><td class="wr">${esc(famTitle(x.f))}</td><td><b>${x.actual.toLocaleString()}</b></td><td>${(x.actual/mon).toFixed(1)}</td><td>${(x.actual/tot*100).toFixed(1)}%</td><td class="barc"><div class="bar"><i class="rng" style="left:0;width:${x.actual/max*100}%"></i></div></td></tr>`).join('')}
@@ -1622,8 +1695,8 @@ function specSummary(list){const rows=specCount(list);if(!rows.length)return '';
    ${rows.map(x=>`<tr${x.extra?' class="tot"':''}><td class="spec">${esc(x.spec)}</td><td><b>${x.q.toLocaleString()}</b></td><td>${x.n}</td><td>${x.soon||'—'}</td><td>${x.open||'—'}</td></tr>`).join('')}</tbody></table></div>
    <div class="pnote">จำนวนเส้นต่อขนาด = QTY of Belt ÷ จำนวนขนาดของเครื่อง (ปัดลง) ส่วนที่หารไม่ลงตัวนับเป็น “เส้นพิเศษ” แยกไว้ ถ้าไม่มีข้อมูล QTY นับ 1 เส้นต่อขนาด</div><div class="phead">รายการรายเครื่อง</div>`}
 function renderBad(){
-  const days=+$('pBadDays').value,B=badActors(days,FAMSEL);badCache=B.list;
-  $('pBad').innerHTML=`<div class="panel"><span class="kind">Bad actor</span><h2>เครื่องที่เสียบ่อย</h2>
+  const days=+$('pBadDays').value,B=badActors(days,FAMSEL,AREA);badCache=B.list;
+  $('pBad').innerHTML=`<div class="panel"><span class="kind">Bad actor</span><h2>เครื่องที่เสียบ่อย${AREA?` <span class="chip">${esc(AREA)}</span>`:''}</h2>
     <label class="field inl"><span>ดูย้อนหลัง</span><select id="pBadDays2">${[90,180,365,730].map(d=>`<option value="${d}"${d===days?' selected':''}>${d} วัน</option>`).join('')}</select></label>
     <div class="small">${B.list.length.toLocaleString()} เครื่องมี DM ในช่วงนี้ · เฉลี่ย ${B.avg.toFixed(1)} ครั้ง/เครื่อง${B.bt?` · ทดสอบย้อนหลัง: เครื่องที่เสียบ่อยสุด 10% เกิด DM ใหม่ภายใน 90 วัน ${Math.round(B.bt.top*100)}% เทียบค่าเฉลี่ย ${Math.round(B.bt.all*100)}%`:''}</div></div>
     ${B.list.length?`<div class="tbl scroll"><table><thead><tr><th>#</th><th>เครื่องจักร</th><th>DM</th><th>ค้าง</th><th>อะไหล่ที่เสียบ่อย</th><th>ล่าสุด</th></tr></thead><tbody>
