@@ -466,16 +466,7 @@ details ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
       <div class="prange">
         <label class="field"><span>ตั้งแต่</span><input type="date" id="pFrom"></label>
         <label class="field"><span>ถึง</span><input type="date" id="pTo"></label>
-        <div class="field"><span>อะไหล่</span>
-          <div class="msel" id="pFamBox">
-            <button type="button" class="mbtn" id="pFamBtn" aria-haspopup="true" aria-expanded="false"><span id="pFamLbl">อะไหล่ทุกชนิด</span><svg class="ic"><use href="#i-chev"/></svg></button>
-            <div class="mpop" id="pFamPop" hidden>
-              <input id="pFamQ" placeholder="ค้นหาชื่ออะไหล่" autocomplete="off" aria-label="ค้นหาชื่ออะไหล่">
-              <label class="mall"><input type="checkbox" id="pFamAll"> เลือกทั้งหมด</label>
-              <div class="mlist" id="pFamList"></div>
-              <div class="mfoot"><span class="small" id="pFamCnt"></span><button type="button" class="cta sm" id="pFamOk">ตกลง</button></div>
-            </div>
-          </div></div>
+        <label class="field"><span>อะไหล่</span><select id="pFam"></select></label>
       </div>
       <div class="chips" id="pPresets">
         <button type="button" data-p="next30" aria-pressed="false">30 วันข้างหน้า</button>
@@ -484,6 +475,7 @@ details ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
         <button type="button" data-p="nextM" aria-pressed="false">เดือนหน้า</button>
         <button type="button" data-p="nextQ" aria-pressed="false">ไตรมาสหน้า</button>
         <button type="button" data-p="last90" aria-pressed="false">90 วันที่ผ่านมา (เทียบของจริง)</button>
+        <button type="button" data-p="all" aria-pressed="false">ทั้งหมด (วันแรก – วันนี้)</button>
       </div>
       <input type="hidden" id="pBadDays" value="365">
       <div class="status" id="pStatus" role="status"></div>
@@ -1419,7 +1411,8 @@ function buildPlan(){ // ทำดัชนีเหตุการณ์ชำ�
   for(const [f,g] of gaps){if(g.length<20)continue;g.sort((a,b)=>a-b);FS.set(f,{n:g.length,p25:pct(g,.25),p50:pct(g,.5),p75:pct(g,.75)})}
   const fams=[...cnt.entries()].sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
   const maxD=EV.reduce((m,e)=>Math.max(m,e.d),0);
-  return PLAN={EV,byKey,byM,FS,fams,cnt,maxD};
+  const minD=EV.reduce((m,e)=>Math.min(m,e.d),Infinity);
+  return PLAN={EV,byKey,byM,FS,fams,cnt,maxD,minD:isFinite(minD)?minD:0};
 }
 function machinePlan(fk){ // แผนรายเครื่อง: ทุกชนิดอะไหล่ที่เครื่องนี้เคยเสีย
   const P=buildPlan(),now=Date.now(),out=[];
@@ -1503,9 +1496,9 @@ function initPlanView(){
   const P=buildPlan();
   if(!pInit){pInit=true;setPreset('next30');}
   FAMLIST=P.fams.filter(f=>P.cnt.get(f)>=10);
-  if(FAMSEL)for(const f of [...FAMSEL])if(!FAMLIST.includes(f))FAMSEL.delete(f);
-  if(FAMSEL&&!FAMSEL.size)FAMSEL=null;
-  famLabel();
+  const cur=$('pFam').value;
+  $('pFam').innerHTML=`<option value="">อะไหล่ทุกชนิด (${FAMLIST.length})</option>`+FAMLIST.map(f=>`<option value="${esc(f)}">${esc(famTitle(f))} (${P.cnt.get(f)})</option>`).join('');
+  $('pFam').value=FAMLIST.includes(cur)?cur:'';famSync();
   $('pInfo').textContent=ST.sheets.length?`คำนวณจากประวัติ DM ${P.EV.length.toLocaleString()} รายการ · ข้อมูลล่าสุด ${fmtD(P.maxD)}`:'ยังไม่มีข้อมูลสถานะ DM ให้คำนวณ นำเข้าไฟล์สถานะในหน้า Admin ก่อน';
   renderPlan();
 }
@@ -1516,6 +1509,7 @@ function setPreset(p){
   else if(p==='nextM'){a=new Date(d.getFullYear(),d.getMonth()+1,1).getTime();b=new Date(d.getFullYear(),d.getMonth()+2,0).getTime()}
   else if(p==='nextQ'){const q=Math.floor(d.getMonth()/3)+1;a=new Date(d.getFullYear(),q*3,1).getTime();b=new Date(d.getFullYear(),q*3+3,0).getTime()}
   else if(p==='last90'){a=t-90*DAY;b=t-DAY}
+  else if(p==='all'){const P=buildPlan();a=P.minD?dayStart(P.minD):t;b=t} // ตั้งแต่วันแรกที่มีข้อมูล DM จนถึงวันนี้
   $('pFrom').value=isoD(a);$('pTo').value=isoD(b);
   document.querySelectorAll('#pPresets button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.p===p));
 }
@@ -1583,31 +1577,13 @@ function beltSpecs(fk){ // จาก Length Belt 1..n + Type Belt + QTY of Belt 
   const per=qty>0?Math.max(1,Math.floor(qty/ls.length)):1,extra=qty>0?Math.max(0,qty-per*ls.length):0;
   return {specs:ls.map(l=>({spec:`Toothed belt, L = ${l} mm${type?' '+type:''}`,qty:per})),extra,qty};
 }
-/* ---------- เลือกอะไหล่ได้หลายชนิด ---------- */
-function famLabel(){const n=FAMSEL?FAMSEL.size:0;$('pFamLbl').textContent=!FAMSEL?`อะไหล่ทุกชนิด (${FAMLIST.length})`:n===1?famTitle([...FAMSEL][0]):`เลือก ${n} ชนิด`}
-function renderFamList(){
-  const q=$('pFamQ').value.trim().toUpperCase(),P=buildPlan();
-  $('pFamList').innerHTML=FAMLIST.filter(f=>!q||f.includes(q)).map(f=>`<label><input type="checkbox" value="${esc(f)}"${!FAMTMP||FAMTMP.has(f)?' checked':''}> ${esc(famTitle(f))}<span class="c">${P.cnt.get(f)}</span></label>`).join('')||'<div class="small">ไม่พบชื่ออะไหล่</div>';
-  $('pFamList').querySelectorAll('input').forEach(c=>c.onchange=()=>{if(!FAMTMP)FAMTMP=new Set(FAMLIST);c.checked?FAMTMP.add(c.value):FAMTMP.delete(c.value);if(FAMTMP.size===FAMLIST.length)FAMTMP=null;syncAll()});
-  syncAll();
-}
-let FAMTMP=null;
-function syncAll(){const n=FAMTMP?FAMTMP.size:FAMLIST.length;$('pFamAll').checked=!FAMTMP;$('pFamAll').indeterminate=!!FAMTMP&&FAMTMP.size>0;$('pFamCnt').textContent=`เลือก ${n} จาก ${FAMLIST.length}`;$('pFamOk').disabled=n===0}
-function closeFam(apply){
-  if(apply){FAMSEL=FAMTMP&&FAMTMP.size?new Set(FAMTMP):null;famLabel();renderPlan()}
-  $('pFamPop').hidden=true;$('pFamBtn').setAttribute('aria-expanded','false');
-}
-$('pFamBtn').onclick=e=>{e.stopPropagation();if(!$('pFamPop').hidden){closeFam(false);return}
-  FAMTMP=FAMSEL?new Set(FAMSEL):null;$('pFamQ').value='';renderFamList();$('pFamPop').hidden=false;$('pFamBtn').setAttribute('aria-expanded','true');setTimeout(()=>$('pFamQ').focus(),30)};
-$('pFamQ').addEventListener('input',renderFamList);
-$('pFamAll').onchange=()=>{FAMTMP=$('pFamAll').checked?null:new Set();renderFamList()};
-$('pFamOk').onclick=()=>closeFam(true);
-document.addEventListener('click',e=>{if(!$('pFamPop').hidden&&!$('pFamBox').contains(e.target))closeFam(false)});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('pFamPop').hidden)closeFam(false)});
+function famSync(){FAMSEL=$('pFam').value?new Set([$('pFam').value]):null}
+$('pFam').addEventListener('change',()=>{famSync();renderPlan()});
 function renderPlan(){
   if(!ST.sheets.length){for(const id of ['pForecast','pDue','pBad'])$(id).innerHTML='';return}
   const r=getRange();if(!r){$('pForecast').innerHTML='<div class="empty">เลือกวันที่ “ถึง” ให้อยู่หลังวันที่ “ตั้งแต่”</div>';return}
-  const [a,b]=r,fs=FAMSEL,F=forecast(a,b,fs);
+  const [a,b]=r,fs=FAMSEL,F=forecast(a,b,fs),P=buildPlan();
+  if(P.minD&&a<=P.minD)$('pForecast').innerHTML=histHTML(F,a,Math.min(b,Date.now()),fs);else{
   const max=Math.max(1,...F.rows.map(x=>Math.max(x.hi,x.actual||0)));
   const tot={exp:F.total.exp,lo:F.total.lo,hi:F.total.hi,act:F.total.actual||0};
   $('pForecast').innerHTML=`<div class="panel"><span class="kind">พยากรณ์จำนวนอะไหล่</span><h2>คาดว่าจะใช้อะไหล่ ${fmtD(a)} – ${fmtD(b)} <span class="chip">${F.N} วัน</span></h2>
@@ -1616,7 +1592,7 @@ function renderPlan(){
     ${F.rows.map(x=>`<tr><td class="wr">${esc(famTitle(x.f))}</td><td><b>${Math.round(x.exp)}</b></td><td>${Math.round(x.lo)} – ${Math.round(x.hi)}</td>${F.past?`<td>${x.actual}</td>`:''}
       <td class="barc"><div class="bar"><i class="rng" style="left:${x.lo/max*100}%;width:${Math.max(.5,(x.hi-x.lo)/max*100)}%"></i><i class="pt" style="left:${x.exp/max*100}%"></i>${F.past&&x.actual!==null?`<i class="act" style="left:${x.actual/max*100}%"></i>`:''}</div></td></tr>`).join('')}
     ${F.rows.length>1?`<tr class="tot"><td>${fs?`รวม ${F.rows.length} ชนิดที่เลือก`:'รวมทุกชนิด'}</td><td><b>${Math.round(tot.exp)}</b></td><td>${Math.round(tot.lo)} – ${Math.round(tot.hi)}</td>${F.past?`<td>${tot.act}</td>`:''}<td></td></tr>`:''}
-    </tbody></table></div><div class="pnote"><span class="lg"><i class="pt"></i>ค่าที่คาด</span><span class="lg"><i class="rng"></i>ช่วงที่เป็นไปได้ (80%)</span>${F.past?'<span class="lg"><i class="act"></i>ใช้จริง</span>':''}</div>`;
+    </tbody></table></div><div class="pnote"><span class="lg"><i class="pt"></i>ค่าที่คาด</span><span class="lg"><i class="rng"></i>ช่วงที่เป็นไปได้ (80%)</span>${F.past?'<span class="lg"><i class="act"></i>ใช้จริง</span>':''}</div>`;}
   dueCache=dueList(a,b,fs);const specRows=specCount(dueCache);
   const dueN=new Set(dueCache.map(x=>x.fk)).size;
   $('pDue').innerHTML=`<div class="panel"><span class="kind">แผนเปลี่ยนรายเครื่อง</span><h2>ถึงช่วงควรตรวจ/เปลี่ยนในช่วงนี้ <span class="chip">${dueN.toLocaleString()} เครื่อง</span></h2>
@@ -1630,6 +1606,14 @@ function renderPlan(){
   renderBad();
   $('v-plan').querySelectorAll('[data-fk]').forEach(b=>b.onclick=()=>openMachine(b.dataset.fk));
 }
+function histHTML(F,a,b,fs){ // ช่วงที่เริ่มตั้งแต่วันแรกของข้อมูล → ไม่มีอะไรให้พยากรณ์ แสดงยอดใช้จริงทั้งหมดแทน
+  const rows=F.rows.filter(x=>x.actual>0).sort((x,y)=>y.actual-x.actual),tot=rows.reduce((s,x)=>s+x.actual,0),mon=Math.max(1,(b-a)/DAY/30.44),max=Math.max(1,...rows.map(x=>x.actual));
+  return `<div class="panel"><span class="kind">ยอดใช้อะไหล่จริง</span><h2>อะไหล่ที่ใช้ไปทั้งหมด ${fmtD(a)} – ${fmtD(b)} <span class="chip">${Math.round((b-a)/DAY+1).toLocaleString()} วัน</span></h2>
+    <div class="small">นับจากประวัติ DM ทุกรายการที่ระบุอะไหล่ (1 รายการ = 1 ครั้งที่เสีย/เปลี่ยน) ตั้งแต่วันแรกที่มีข้อมูลจนถึงวันนี้</div></div>
+    ${rows.length?`<div class="tbl${rows.length>16?' scroll':''}"><table class="fc"><thead><tr><th>อะไหล่</th><th>ใช้จริง (ครั้ง)</th><th>เฉลี่ย/เดือน</th><th>สัดส่วน</th><th class="barh"></th></tr></thead><tbody>
+    ${rows.map(x=>`<tr><td class="wr">${esc(famTitle(x.f))}</td><td><b>${x.actual.toLocaleString()}</b></td><td>${(x.actual/mon).toFixed(1)}</td><td>${(x.actual/tot*100).toFixed(1)}%</td><td class="barc"><div class="bar"><i class="rng" style="left:0;width:${x.actual/max*100}%"></i></div></td></tr>`).join('')}
+    ${rows.length>1?`<tr class="tot"><td>${fs?'รวม':'รวมทุกชนิด'}</td><td><b>${tot.toLocaleString()}</b></td><td>${(tot/mon).toFixed(1)}</td><td>100%</td><td></td></tr>`:''}
+    </tbody></table></div>`:'<div class="empty">ไม่มีการใช้อะไหล่นี้ในช่วงนี้</div>'}`}
 function specCount(list){const m=new Map();for(const x of list)if(x.tb){const k=x.spec,q=x.qty||1;const c=m.get(k)||{spec:k,n:0,q:0,open:0,soon:0,extra:!!x.extra};c.n++;c.q+=q;if(x.open)c.open+=q;if(x.cls!=='ok')c.soon+=q;m.set(k,c)}return [...m.values()].sort((a,b)=>(a.extra-b.extra)||b.q-a.q||a.spec.localeCompare(b.spec))}
 function specSummary(list){const rows=specCount(list);if(!rows.length)return '';
   const sized=rows.filter(x=>!x.extra),ex=rows.find(x=>x.extra);
