@@ -145,7 +145,7 @@ button:focus-visible,.btn:focus-visible,input:focus-visible,select:focus-visible
   .ubtn .nm{display:none}.ubtn{padding:4px}
   .bt{font-size:20px}
   body.nav-on .tabs{position:fixed;left:0;right:0;bottom:0;z-index:35;border-radius:0;background:var(--surface);border-top:1px solid var(--line);
-    padding:6px max(10px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(10px,env(safe-area-inset-left,0px));display:grid;grid-template-columns:1fr 1fr;box-shadow:0 -8px 20px -16px rgba(0,0,0,.4)}
+    padding:6px max(10px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(10px,env(safe-area-inset-left,0px));display:grid;grid-template-columns:repeat(3,1fr);box-shadow:0 -8px 20px -16px rgba(0,0,0,.4)}
   body.nav-on .tabs a{flex-direction:column;gap:2px;color:var(--muted);font-size:15px;padding:6px;border-radius:12px;justify-content:center}
   body.nav-on .tabs a[aria-current="page"]{color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent)}
   body.nav-on .wrap{padding-bottom:150px}
@@ -216,7 +216,7 @@ dl>:nth-last-child(-n+2){border-bottom:0}
 .tbl table{border-collapse:collapse;font-size:13px;min-width:100%}
 .tbl th{position:sticky;top:0;background:color-mix(in srgb,var(--frame) 10%,var(--surface));color:var(--fg);text-align:left;font-weight:600;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
 .tbl td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top;white-space:nowrap;font-variant-numeric:tabular-nums}
-.tbl td.wrap{white-space:normal;min-width:180px}
+.tbl td.wr{white-space:normal;min-width:180px}
 .tbl tr:last-child td{border-bottom:0}
 .tbl td.dm{font-family:var(--f-code);font-weight:700;color:var(--frame)}
 .st{display:inline-block;font-size:12px;font-weight:600;border-radius:999px;padding:1px 9px;white-space:nowrap}
@@ -241,6 +241,54 @@ dl>:nth-last-child(-n+2){border-bottom:0}
 .foot{font-size:13px;color:var(--muted);text-align:center}
 .tag-sample{display:inline-block;font-size:12px;background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn);border-radius:4px;padding:1px 8px;margin-left:6px}
 @media (prefers-reduced-motion:no-preference){#out .card{animation:in .2s ease-out}@keyframes in{from{transform:translateY(6px);opacity:.6}}}
+
+/* ---------- planning ---------- */
+.prange{display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:10px}
+@media (max-width:560px){.prange{grid-template-columns:1fr 1fr}.prange .field:last-child{grid-column:1/-1}}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{font-size:13px;font-weight:500;padding:5px 12px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);color:var(--fg)}
+.chips button[aria-pressed="true"]{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;border-color:transparent}
+.field.inl{flex-direction:row;align-items:center;gap:8px}.field.inl select{width:auto}
+.pnote{padding:10px 14px;font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:6px 16px}
+.lnk{background:none;border:0;padding:0;font-family:var(--f-code);font-weight:700;color:var(--frame);text-decoration:underline;text-underline-offset:3px}
+.tbl.scroll{max-height:460px;overflow:auto}
+.tbl tr.tot td{background:var(--surface-2);font-weight:600}
+.barh{min-width:160px}.barc{min-width:160px;vertical-align:middle}
+.bar{position:relative;height:14px;border-radius:7px;background:var(--surface-2)}
+.bar i,.lg i{position:absolute;display:block}
+.bar .rng{top:3px;height:8px;border-radius:4px;background:color-mix(in srgb,var(--frame) 30%,transparent)}
+.bar .pt{top:0;width:4px;height:14px;margin-left:-2px;border-radius:2px;background:var(--frame)}
+.bar .act{top:1px;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:var(--accent);border:2px solid var(--surface)}
+.lg{display:inline-flex;align-items:center;gap:6px}.lg i{position:relative}
+.lg .pt{width:4px;height:12px;border-radius:2px;background:var(--frame)}.lg .rng{width:18px;height:8px;border-radius:4px;background:color-mix(in srgb,var(--frame) 30%,transparent)}
+.lg .act{width:10px;height:10px;border-radius:50%;background:var(--accent)}
+.seg.three{grid-template-columns:repeat(3,1fr)}
+@media (min-width:960px){#v-plan{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}#v-plan>.span2{grid-column:1/-1}}
+
+/* ---------- replacement timeline ---------- */
+.tlwrap{position:relative;overflow-x:auto;border-bottom:1px solid var(--line)}
+.tl{display:block;min-width:640px;width:100%;height:auto;font-family:var(--f-body)}
+.tl .lane{fill:var(--surface-2)}
+.tl .lbl{fill:var(--fg);font-size:12px;font-weight:600}
+.tl .sub{fill:var(--muted);font-size:10.5px}
+.tl .tick{stroke:var(--line);stroke-width:1}
+.tl .tk{fill:var(--muted);font-size:10.5px}
+.tl .seg{stroke:color-mix(in srgb,var(--muted) 55%,transparent);stroke-width:2}
+.tl .gap{fill:var(--muted);font-size:10px;font-variant-numeric:tabular-nums}
+.tl .win{fill:color-mix(in srgb,var(--accent) 20%,transparent)}
+.tl .mid{stroke:var(--accent);stroke-width:2}
+.tl .now{stroke:var(--fg);stroke-width:1.5;stroke-dasharray:4 3}
+.tl .nowt{fill:var(--fg);font-size:10.5px;font-weight:600}
+.tl .dot{stroke:var(--surface);stroke-width:2;cursor:pointer}
+.tl .dot.ok{fill:var(--frame)}.tl .dot.l1{fill:#e8b400}.tl .dot.l2{fill:#c94f0c}.tl .dot.off{fill:#b4202a}
+.tl .dot:hover,.tl .dot:focus{stroke:var(--fg);outline:none}
+.tltip{position:absolute;z-index:5;pointer-events:none;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:8px 10px;font-size:12.5px;min-width:170px;max-width:260px}
+.tltip b{display:block;font-size:13px}
+.tlleg{display:flex;flex-wrap:wrap;gap:6px 14px;padding:8px 14px;font-size:12px;color:var(--muted)}
+.tlleg span{display:inline-flex;align-items:center;gap:5px}
+.tlleg svg{width:13px;height:13px}
+.tlleg i{display:inline-block}.tlleg i.win{width:18px;height:10px;border-radius:3px;background:color-mix(in srgb,var(--accent) 20%,transparent);border-left:2px solid var(--accent)}
+.phead{padding:12px 14px 4px;font-weight:600;font-size:14px}
 
 /* ---------- camera ---------- */
 .camview{position:fixed;inset:0;z-index:60;background:#000;display:flex;flex-direction:column}
@@ -313,6 +361,7 @@ details ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
   <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></symbol>
   <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3"/></symbol>
   <symbol id="i-logout" viewBox="0 0 24 24"><path d="M15 4h4v16h-4"/><path d="M10 8l-4 4 4 4M6 12h11"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M8 14h3v3H8z"/></symbol>
   <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
 </svg>
 
@@ -348,6 +397,7 @@ details ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
     </div>
     <nav class="tabs" id="nav" aria-label="เมนู" hidden>
       <a href="#search" id="t-search"><svg class="ic"><use href="#i-search"/></svg>Search Me!</a>
+      <a href="#plan" id="t-plan"><svg class="ic"><use href="#i-cal"/></svg>วางแผน</a>
       <a href="#admin" id="t-admin"><svg class="ic"><use href="#i-shield"/></svg>Admin</a>
     </nav>
     <div class="ubox" id="ubox" hidden>
@@ -387,6 +437,33 @@ details ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
       <div id="out"></div>
       <div class="hint"><img src="data:image/jpeg;base64,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" alt=""><b>พร้อมค้นหาแล้ว</b><span>พิมพ์รหัสตำแหน่ง หรือถ่ายรูปป้ายบนเครื่อง<br>รายละเอียดและสถานะจะแสดงตรงนี้</span></div>
     </div>
+  </section>
+
+  <!-- ===== วางแผน (Supervisor / Admin) ===== -->
+  <section class="view" id="v-plan" hidden>
+    <div class="card span2"><div class="panel">
+      <span class="kind">Supervisor / Admin</span>
+      <h2>วางแผนเปลี่ยนอะไหล่</h2>
+      <div class="small" id="pInfo"></div>
+      <div class="prange">
+        <label class="field"><span>ตั้งแต่</span><input type="date" id="pFrom"></label>
+        <label class="field"><span>ถึง</span><input type="date" id="pTo"></label>
+        <label class="field"><span>อะไหล่</span><select id="pFam"></select></label>
+      </div>
+      <div class="chips" id="pPresets">
+        <button type="button" data-p="next30" aria-pressed="false">30 วันข้างหน้า</button>
+        <button type="button" data-p="next90" aria-pressed="false">90 วันข้างหน้า</button>
+        <button type="button" data-p="thisM" aria-pressed="false">เดือนนี้</button>
+        <button type="button" data-p="nextM" aria-pressed="false">เดือนหน้า</button>
+        <button type="button" data-p="nextQ" aria-pressed="false">ไตรมาสหน้า</button>
+        <button type="button" data-p="last90" aria-pressed="false">90 วันที่ผ่านมา (เทียบของจริง)</button>
+      </div>
+      <input type="hidden" id="pBadDays" value="365">
+      <div class="status" id="pStatus" role="status"></div>
+    </div></div>
+    <div class="card span2" id="pForecast"></div>
+    <div class="card" id="pDue"></div>
+    <div class="card" id="pBad"></div>
   </section>
 
   <!-- ===== หลังบ้าน ===== -->
@@ -573,7 +650,7 @@ function buildIndex(){
   const src=MIDX.size?[...MIDX.values()]:[...new Map(INDEX.map(e=>[e.fk,e])).values()];
   UNIV=src.map(e=>({code:e.code,fk:e.fk,t:toks(e.code)}));
   const when=DB.updatedAt?new Date(DB.updatedAt).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'}):'';
-  buildStatusIndex();
+  buildStatusIndex();PLAN=null;
   const sw=ST.updatedAt?new Date(ST.updatedAt).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'}):'';
   const mw=MC.updatedAt?new Date(MC.updatedAt).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'}):'';
   $('dbfoot').innerHTML=`${MIDX.size?`เครื่องจักรทั้งหมด ${MIDX.size.toLocaleString()} เครื่อง${mw?' · อัปเดต '+esc(mw):''}<br>`:''}รายละเอียด ${INDEX.length.toLocaleString()} เครื่อง${when?' · อัปเดต '+esc(when):''}${ST.sheets.length?`<br>สถานะ DM ${ST.sheets.reduce((n,s)=>n+s.rows.length,0).toLocaleString()} รายการ${sw?' · อัปเดต '+esc(sw):''}`:''}${DB.sample?'<span class="tag-sample">ข้อมูลตัวอย่าง</span>':''}`;
@@ -602,7 +679,8 @@ function statusCols(sh,fks){ // หาคอลัมน์รหัสเคร
     if(k>mc||(k===mc&&k>0&&/เครื่องจักร|machine|equip/i.test(sh.headers[c]))){mc=k;mi=c}}
   if(mi<0)mi=sh.headers.findIndex(h=>/เครื่องจักร|machine|equip/i.test(h));
   if(mi<0)mi=codeIdx(sh);
-  return {mi,matched:mc,di:sh.headers.findIndex(h=>/วันที่เสีย|วันที่พบ|วันที่แจ้ง|report|found/i.test(h)),si:sh.headers.findIndex(h=>/ระดับความเสียหาย|สถานะ|status/i.test(h))};
+  const fh=re=>sh.headers.findIndex(h=>re.test(h));
+  return {mi,matched:mc,oi:fh(/doc\s*dm|เลขที่\s*dm|เลขที่เอกสาร/i),yi:fh(/สาเหตุ\/อาการ|อาการ|symptom|problem/i),pi:fh(/อะไหล่|spare|part/i),fi:fh(/วันแล้วเสร็จ|เสร็จ|finish|complete|close/i),di:sh.headers.findIndex(h=>/วันที่เสีย|วันที่พบ|วันที่แจ้ง|report|found/i.test(h)),si:sh.headers.findIndex(h=>/ระดับความเสียหาย|สถานะ|status/i.test(h))};
 }
 function thDate(v){ // "15/11/2567 11:20" → เวลา (รองรับ พ.ศ./ค.ศ.)
   const m=String(v||'').match(/(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})(?:\D+(\d{1,2}):(\d{2}))?/);if(!m)return 0;
@@ -638,7 +716,7 @@ function statusHTML(recs){
      ${rows.map(r=>`<tr class="${c.si>=0?stClass(r[c.si]):''}">${show.map(i=>{const h=sh.headers[i],v=r[i]??'';
         if(i===c.si)return `<td>${v?`<span class="st ${stClass(v)}">${esc(v)}</span>`:''}</td>`;
         if(/DM/i.test(h)&&/^DM/i.test(v))return `<td class="dm">${esc(v)}</td>`;
-        return `<td${String(v).length>24?' class="wrap"':''}>${esc(v)}</td>`}).join('')}</tr>`).join('')}
+        return `<td${String(v).length>24?' class="wr"':''}>${esc(v)}</td>`}).join('')}</tr>`).join('')}
      </tbody></table></div>`;
   }
   return html;
@@ -677,19 +755,22 @@ function showMachine(fk,quiet,guessFrom){ // ขั้นที่ 4–5: ดึ
   for(const e of dets)e.sh.headers.forEach((h,i)=>{if(i!==e.ci)add(h,e.r[i])});
   let open=0,worst='';
   for(const x of recs){const k=x.sh._c.si>=0?stClass(x.r[x.sh._c.si]):'';if(k&&k!=='ok'){open++;if(LV_ORDER[k]>LV_ORDER[worst])worst=k}}
-  const chip=dets[0]?`แท็บ: ${dets[0].sh.name}`:'รายชื่อเครื่องจักร';
+  const chip=dets[0]?`แท็บ: ${dets[0].sh.name}`:'รายชื่อเครื่องจักร',pl=canPlan();if(segTab==='plan'&&!pl)segTab='info';
   $('out').innerHTML=`<article class="card"><div class="plate"><div class="code">${esc(code)}</div></div>
    ${guessFrom?`<div class="guess">ระบบเดาจาก “<b>${esc(guessFrom)}</b>” → <b>${esc(code)}</b></div>`:''}
    <div class="meta"><span class="found">✓ พบเครื่องจักร</span><span class="chip">${esc(chip)}</span></div>
-   <div class="seg" role="tablist">
-     <button type="button" role="tab" data-t="info" aria-selected="${segTab==='info'}">รายละเอียดเครื่องจักร</button>
-     <button type="button" role="tab" data-t="st" aria-selected="${segTab==='st'}">สถานะเครื่องจักร<span class="n ${worst}">${open?open+' ค้าง':recs.length}</span></button>
+   <div class="seg${pl?' three':''}" role="tablist">
+     <button type="button" role="tab" data-t="info" aria-selected="${segTab==='info'}">${pl?'รายละเอียด':'รายละเอียดเครื่องจักร'}</button>
+     <button type="button" role="tab" data-t="st" aria-selected="${segTab==='st'}">${pl?'สถานะ DM':'สถานะเครื่องจักร'}<span class="n ${worst}">${open?open+' ค้าง':recs.length}</span></button>
+     ${pl?`<button type="button" role="tab" data-t="plan" aria-selected="${segTab==='plan'}">แผนเปลี่ยน</button>`:''}
    </div>
    <div data-p="info"${segTab==='info'?'':' hidden'}>${dets.length?'':'<div class="nodata">ยังไม่มีรายละเอียดสเปกของเครื่องนี้ในระบบ</div>'}${items.length?`<dl>${items.map(([h,v])=>`<dt>${esc(h||'—')}</dt><dd>${esc(v)}</dd>`).join('')}</dl>`:''}</div>
-   <div data-p="st"${segTab==='st'?'':' hidden'}>${statusHTML(recs)}</div></article>`;
+   <div data-p="st"${segTab==='st'?'':' hidden'}>${statusHTML(recs)}</div>
+   ${pl?`<div data-p="plan"${segTab==='plan'?'':' hidden'}>${planHTML(fk)}</div>`:''}</article>`;
+  bindTimeline($('out'));
   $('out').querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{segTab=b.dataset.t;
     $('out').querySelectorAll('.seg button').forEach(x=>x.setAttribute('aria-selected',x===b));
-    $('out').querySelectorAll('[data-p]').forEach(p=>p.hidden=p.dataset.p!==segTab)});
+    $('out').querySelectorAll('[data-p]').forEach(p=>p.hidden=p.dataset.p!==segTab);if(segTab==='plan')bindTimeline($('out'))});
   if(!quiet)addRecent(code);
 }
 function showOne(e,quiet){showMachine(e.fk,quiet)}
@@ -1104,12 +1185,12 @@ window.addEventListener('hashchange',()=>{if(camStream)stopCam()});
 
 /* ---------- tabs ---------- */
 function route(){
-  let admin=location.hash==='#admin';
-  if(admin&&!canAdmin()){admin=false;history.replaceState(null,'','#search')}
-  $('v-search').hidden=admin;$('v-admin').hidden=!admin;
-  $('t-search').toggleAttribute('aria-current',!admin);$('t-admin').toggleAttribute('aria-current',admin);
-  if(admin){$('t-admin').setAttribute('aria-current','page')}else{$('t-search').setAttribute('aria-current','page')}
-  $('sub').textContent=admin?'สำหรับผู้ดูแล: นำเข้า แก้ไข และเผยแพร่ข้อมูลให้ทุกคน':'พิมพ์รหัส หรือถ่ายรูปป้ายบนเครื่อง ระบบจะแสดงข้อมูลออกมา';
+  let v=location.hash==='#admin'?'admin':location.hash==='#plan'?'plan':'search';
+  if(v!=='search'&&!canAdmin()){v='search';history.replaceState(null,'','#search')}
+  const admin=v==='admin';
+  for(const k of ['search','plan','admin']){$('v-'+k).hidden=v!==k;const t=$('t-'+k);if(v===k)t.setAttribute('aria-current','page');else t.removeAttribute('aria-current')}
+  if(v==='plan')initPlanView();
+  $('sub').textContent=v==='plan'?'สถิติจากประวัติ DM เพื่อวางแผนเปลี่ยนอะไหล่และสต็อก':admin?'สำหรับผู้ดูแล: นำเข้า แก้ไข และเผยแพร่ข้อมูลให้ทุกคน':'พิมพ์รหัส หรือถ่ายรูปป้ายบนเครื่อง ระบบจะแสดงข้อมูลออกมา';
   $('pubbar').hidden=!(admin&&(dirty+dirtyS+dirtyM)>0);
 }
 window.addEventListener('hashchange',route);
@@ -1272,6 +1353,231 @@ $('publish').onclick=async()=>{
   }finally{b.disabled=false;b.textContent='เผยแพร่ให้ทุกคน'}
 };
 
+
+/* ---------- วางแผนเปลี่ยนอะไหล่ (Supervisor / Admin) ---------- */
+const DAY=86400000;
+const canPlan=()=>canAdmin();
+const pct=(a,p)=>{if(!a.length)return 0;const i=(a.length-1)*p,lo=Math.floor(i),hi=Math.ceil(i);return a[lo]+(a[hi]-a[lo])*(i-lo)};
+const fmtD=t=>t?new Date(t).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'}):'—';
+const isoD=t=>{const d=new Date(t);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
+const dayStart=t=>{const d=new Date(t);d.setHours(0,0,0,0);return d.getTime()};
+const famTitle=f=>f.toLowerCase().replace(/(^|[\s\-])([a-z])/g,(m,a,b)=>a+b.toUpperCase());
+function famOf(sym,part){ // จัดกลุ่มอะไหล่จากอาการ/ชื่ออะไหล่ เช่น "TOOTHED BELT ชำรุด (D) New" → TOOTHED BELT
+  if(/ถอดย้าย|คืนอะไหล่/.test(sym||''))return '';
+  let t=String(sym||'').toUpperCase().replace(/\(.*?\)/g,' ').replace(/[^\x00-\x7F]+/g,' ').replace(/\bNEW\b/g,' ').replace(/HIGH-SPEED/g,'HI-SPEED').replace(/[^A-Z0-9\- ]/g,' ').replace(/\s+/g,' ').trim().replace(/^-+|-+$/g,'');
+  if(t.length<3)t=String(part||'').toUpperCase().replace(/[^A-Z ]/g,' ').replace(/\s+/g,' ').trim().split(' ').slice(0,2).join(' ');
+  return t.length>=3?t:'';
+}
+let PLAN=null;
+function buildPlan(){ // ทำดัชนีเหตุการณ์ชำรุด + สถิติอายุอะไหล่ทั้งโรงงาน (คำนวณครั้งเดียวต่อชุดข้อมูล)
+  if(PLAN)return PLAN;
+  const EV=[],byKey=new Map(),byM=new Map();
+  for(const sh of ST.sheets){const c=sh._c;if(!c||c.di<0)continue;
+    for(const r of sh.rows){const d=thDate(r[c.di]);if(!d)continue;const fk=fkey(r[c.mi]);if(!fk)continue;
+      const fam=famOf(c.yi>=0?r[c.yi]:'',c.pi>=0?r[c.pi]:'');const lv=c.si>=0?stClass(r[c.si]):'';
+      const e={fk,code:norm(r[c.mi]),fam,d,done:c.fi>=0?thDate(r[c.fi]):0,lv,lvTxt:c.si>=0?String(r[c.si]||''):'',doc:c.oi>=0?String(r[c.oi]||''):'',sym:c.yi>=0?String(r[c.yi]||''):''};EV.push(e);
+      if(!byM.has(fk))byM.set(fk,[]);byM.get(fk).push(e);
+      if(fam){const k=fk+'|'+fam;if(!byKey.has(k))byKey.set(k,[]);byKey.get(k).push(e)}}}
+  // รวมชื่อที่พิมพ์ต่างกันเล็กน้อย เช่น GUID ROLLER → GUIDE ROLLER
+  const fc=new Map();for(const e of EV)if(e.fam)fc.set(e.fam,(fc.get(e.fam)||0)+1);
+  const lev=(a,b)=>{if(Math.abs(a.length-b.length)>1)return 9;const d=[...Array(b.length+1).keys()];for(let i=1;i<=a.length;i++){let p=d[0];d[0]=i;for(let j=1;j<=b.length;j++){const t=d[j];d[j]=Math.min(d[j]+1,d[j-1]+1,p+(a[i-1]===b[j-1]?0:1));p=t}}return d[b.length]};
+  const names=[...fc.keys()].sort((a,b)=>fc.get(b)-fc.get(a)),alias=new Map();
+  for(let i=0;i<names.length;i++){const a=names[i];if(alias.has(a)||a.length<6)continue;for(let j=i+1;j<names.length;j++){const b=names[j];if(!alias.has(b)&&lev(a,b)<=1)alias.set(b,a)}}
+  if(alias.size){for(const e of EV)if(alias.has(e.fam))e.fam=alias.get(e.fam);
+    byKey.clear();for(const e of EV)if(e.fam){const k=e.fk+'|'+e.fam;if(!byKey.has(k))byKey.set(k,[]);byKey.get(k).push(e)}}
+  const gaps=new Map(),cnt=new Map();
+  for(const [k,v] of byKey){v.sort((a,b)=>a.d-b.d);const f=v[0].fam;cnt.set(f,(cnt.get(f)||0)+v.length);
+    for(let i=1;i<v.length;i++){const g=(v[i].d-v[i-1].d)/DAY;if(g>=1){if(!gaps.has(f))gaps.set(f,[]);gaps.get(f).push(g)}}}
+  const FS=new Map();
+  for(const [f,g] of gaps){if(g.length<20)continue;g.sort((a,b)=>a-b);FS.set(f,{n:g.length,p25:pct(g,.25),p50:pct(g,.5),p75:pct(g,.75)})}
+  const fams=[...cnt.entries()].sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
+  const maxD=EV.reduce((m,e)=>Math.max(m,e.d),0);
+  return PLAN={EV,byKey,byM,FS,fams,cnt,maxD};
+}
+function machinePlan(fk){ // แผนรายเครื่อง: ทุกชนิดอะไหล่ที่เครื่องนี้เคยเสีย
+  const P=buildPlan(),now=Date.now(),out=[];
+  for(const [k,v] of P.byKey){if(!k.startsWith(fk+'|'))continue;
+    const f=v[0].fam,st=P.FS.get(f),last=v[v.length-1],base=last.done||last.d;
+    const own=[];for(let i=1;i<v.length;i++){const g=(v[i].d-v[i-1].d)/DAY;if(g>=1)own.push(g)}own.sort((a,b)=>a-b);
+    const open=v.some(e=>e.lv&&e.lv!=='ok');
+    if(!st){out.push({f,last,base,n:v.length,own,open});continue}
+    const age=(now-base)/DAY,cls=age<st.p25?'ok':age<st.p50?'l1':age<st.p75?'l2':age<st.p75*2?'off':'long';
+    out.push({f,last,base,n:v.length,own,open,st,from:base+st.p25*DAY,mid:base+st.p50*DAY,to:base+st.p75*DAY,cls,age});
+  }
+  return out.sort((a,b)=>(LV_ORDER[b.cls]||0)-(LV_ORDER[a.cls]||0)||(a.mid||9e15)-(b.mid||9e15));
+}
+const PLAN_LBL={ok:'ยังไม่ถึงช่วง',l1:'เข้าช่วงควรตรวจ',l2:'ควรวางแผนเปลี่ยน',off:'เกินช่วงปกติ ควรตรวจสภาพ',long:'ไม่เสียซ้ำมานาน (ปกติดี)'};
+LV_ORDER.long=-1;
+function planHTML(fk){
+  const rows=machinePlan(fk);
+  if(!ST.sheets.length)return '<div class="empty">ยังไม่มีข้อมูลสถานะ DM จึงคำนวณแผนไม่ได้</div>';
+  if(!rows.length)return '<div class="empty">เครื่องนี้ยังไม่มีประวัติอะไหล่ชำรุด จึงยังไม่มีแผนเปลี่ยน</div>';
+  return `<div class="phead">ไทม์ไลน์การเปลี่ยนอะไหล่</div>${timelineHTML(fk,rows)}
+   <div class="phead">แผนครั้งถัดไป</div>
+   <div class="tbl"><table><thead><tr><th>อะไหล่</th><th>เสีย/เปลี่ยนล่าสุด</th><th>ช่วงควรตรวจ/เปลี่ยน</th><th>สถานะ</th><th>ประวัติเครื่องนี้</th></tr></thead><tbody>
+   ${rows.map(x=>`<tr class="${x.cls&&x.cls!=='ok'&&x.cls!=='long'?x.cls:''}"><td class="wr"><b>${esc(famTitle(x.f))}</b>${x.open?' <span class="st off">มี DM ค้าง</span>':''}</td><td>${fmtD(x.base)}</td>
+     <td>${x.st?`${fmtD(x.from)} – ${fmtD(x.to)}<div class="small">ค่ากลาง ${fmtD(x.mid)}</div>`:'<span class="small">ข้อมูลทั้งโรงงานยังน้อยเกินไป</span>'}</td>
+     <td>${x.st?`<span class="st ${x.cls==='long'?'ok':x.cls}">${PLAN_LBL[x.cls]}</span><div class="small">ผ่านมา ${Math.round(x.age)} วัน</div>`:'—'}</td>
+     <td>เสีย ${x.n} ครั้ง${x.own.length?`<div class="small">ห่างกันเฉลี่ย ${Math.round(pct(x.own,.5))} วัน</div>`:''}</td></tr>`).join('')}
+   </tbody></table></div><div class="pnote">ช่วงควรตรวจ/เปลี่ยน = วันที่เสียหรือเปลี่ยนล่าสุด + อายุจริงของอะไหล่ชนิดเดียวกันทั้งโรงงาน (25%–75%) เป็นสถิติเพื่อช่วยวางแผน ไม่ใช่คำทำนายเฉพาะเครื่อง</div>
+   <div class="phead">ประวัติการเปลี่ยนทั้งหมด</div>${historyHTML(fk)}`;
+}
+const LV_TH={ok:'ปิด DM',l1:'เฝ้าระวัง ระดับ 1',l2:'เฝ้าระวัง ระดับ 2',off:'ปิดใช้งาน'};
+const mk=(k,x,y)=>k==='l1'?`M${x} ${y-7.5}L${x+7.5} ${y+5.5}L${x-7.5} ${y+5.5}Z`:k==='l2'?`M${x} ${y-8}L${x+8} ${y}L${x} ${y+8}L${x-8} ${y}Z`:k==='off'?`M${x-6} ${y-6}h12v12h-12Z`:`M${x-6.5} ${y}a6.5 6.5 0 1 0 13 0a6.5 6.5 0 1 0 -13 0`; // รูปทรงช่วยแยกระดับ ไม่พึ่งสีอย่างเดียว
+function timelineHTML(fk,rows){ // แถวละ 1 อะไหล่: จุด = วันที่เสีย/เปลี่ยน, ตัวเลข = วันที่ห่างจากครั้งก่อน, แถบส้ม = ช่วงควรเปลี่ยนครั้งถัดไป
+  const P=buildPlan(),now=Date.now(),lanes=rows.map(x=>({x,ev:P.byKey.get(fk+'|'+x.f)||[]})).filter(l=>l.ev.length);
+  if(!lanes.length)return '';
+  let t0=Infinity,t1=now;
+  for(const l of lanes){for(const e of l.ev){t0=Math.min(t0,e.d);t1=Math.max(t1,e.d)}if(l.x.to&&l.x.cls!=='long')t1=Math.max(t1,Math.min(l.x.to,now+400*DAY))}
+  const span=Math.max(60*DAY,t1-t0);t0-=span*.03;t1+=span*.05;
+  const W=780,L=190,Rm=16,top=26,rowH=46,H=top+lanes.length*rowH+22,X=t=>L+(t-t0)/(t1-t0)*(W-L-Rm);
+  // แกนเวลา: รายเดือน หรือรายไตรมาส/ครึ่งปี ตามความยาวช่วง
+  const months=(t1-t0)/(30*DAY),step=months<=14?1:months<=40?3:6,ticks=[];
+  const d=new Date(t0);d.setDate(1);d.setHours(0,0,0,0);d.setMonth(Math.ceil(d.getMonth()/step)*step);
+  for(;d.getTime()<=t1;d.setMonth(d.getMonth()+step))ticks.push(d.getTime());
+  let g=ticks.map(t=>`<line class="tick" x1="${X(t)}" x2="${X(t)}" y1="${top-6}" y2="${H-6}"/><text class="tk" x="${X(t)}" y="14" text-anchor="middle">${new Date(t).toLocaleDateString('th-TH',{month:'short',year:'2-digit'})}</text>`).join('');
+  lanes.forEach((l,i)=>{
+    const y=top+i*rowH+rowH/2,ev=l.ev,x=l.x;
+    g+=`<rect class="lane" x="${L-8}" y="${y-rowH/2+4}" width="${W-L-Rm+16}" height="${rowH-8}" rx="8"/>`;
+    g+=`<text class="lbl" x="8" y="${y-2}">${esc(famTitle(x.f).length>22?famTitle(x.f).slice(0,21)+'…':famTitle(x.f))}<title>${esc(famTitle(x.f))}</title></text><text class="sub" x="8" y="${y+12}">${ev.length} ครั้ง${x.own.length?` · เฉลี่ย ${Math.round(pct(x.own,.5))} วัน`:''}</text>`;
+    if(x.st&&x.cls!=='long'){const a=Math.max(X(x.from),L-8),b=Math.min(X(x.to),W-Rm+8);if(b>a)g+=`<rect class="win" x="${a}" y="${y-13}" width="${b-a}" height="26" rx="6"/>`;
+      if(x.mid<=t1)g+=`<line class="mid" x1="${X(x.mid)}" x2="${X(x.mid)}" y1="${y-13}" y2="${y+13}"/>`}
+    for(let k=1;k<ev.length;k++){const a=X(ev[k-1].d),b=X(ev[k].d),gd=Math.round((ev[k].d-ev[k-1].d)/DAY);
+      g+=`<line class="seg" x1="${a}" x2="${b}" y1="${y}" y2="${y}"/>`;
+      if(b-a>=34)g+=`<text class="gap" x="${(a+b)/2}" y="${y-8}" text-anchor="middle">${gd} วัน</text>`}
+    ev.forEach((e,k)=>{const gd=k?Math.round((e.d-ev[k-1].d)/DAY):null;
+      g+=`<path class="dot ${e.lv||'ok'}" d="${mk(e.lv||'ok',X(e.d),y)}" tabindex="0" data-tip="${esc(JSON.stringify({f:famTitle(x.f),d:fmtD(e.d),done:e.done?fmtD(e.done):'',doc:e.doc,lv:e.lvTxt||LV_TH[e.lv]||'',gap:gd,sym:e.sym}))}"/>`});
+  });
+  g+=`<line class="now" x1="${X(now)}" x2="${X(now)}" y1="${top-6}" y2="${H-16}"/><text class="nowt" x="${X(now)}" y="${H-4}" text-anchor="middle">วันนี้</text>`;
+  const used=new Set();for(const l of lanes)for(const e of l.ev)used.add(e.lv||'ok');
+  return `<div class="tlwrap"><svg class="tl" viewBox="0 0 ${W} ${H}" role="img" aria-label="ไทม์ไลน์การเปลี่ยนอะไหล่ของเครื่องนี้ รายละเอียดอยู่ในตารางประวัติด้านล่าง">${g}</svg><div class="tltip" hidden></div></div>
+   <div class="tlleg">${['ok','l1','l2','off'].filter(k=>used.has(k)).map(k=>`<span><svg viewBox="0 0 20 20"><path class="dot ${k}" d="${mk(k,10,10.5)}" style="fill:${{ok:'var(--frame)',l1:'#e8b400',l2:'#c94f0c',off:'#b4202a'}[k]}"/></svg>${LV_TH[k]}</span>`).join('')}<span><i class="win"></i>ช่วงควรเปลี่ยนครั้งถัดไป (เส้นส้ม = ค่ากลาง)</span><span>ตัวเลขบนเส้น = จำนวนวันที่ห่างจากครั้งก่อน</span></div>`;
+}
+function historyHTML(fk){
+  const P=buildPlan(),ev=(P.byM.get(fk)||[]).slice().sort((a,b)=>b.d-a.d),prev=new Map();
+  if(!ev.length)return '<div class="empty">ไม่มีประวัติ</div>';
+  const asc=ev.slice().reverse(),gap=new Map();for(const e of asc){const k=e.fam||'?';if(prev.has(k))gap.set(e,Math.round((e.d-prev.get(k))/DAY));prev.set(k,e.d)}
+  return `<div class="tbl scroll"><table><thead><tr><th>วันที่เสีย</th><th>อะไหล่</th><th>ห่างจากครั้งก่อน</th><th>ระดับ</th><th>Doc DM</th><th>วันแล้วเสร็จ</th></tr></thead><tbody>
+   ${ev.map(e=>`<tr class="${e.lv&&e.lv!=='ok'?e.lv:''}"><td>${fmtD(e.d)}</td><td class="wr">${esc(e.fam?famTitle(e.fam):e.sym||'—')}</td><td>${gap.has(e)?gap.get(e)+' วัน':'ครั้งแรก'}</td><td>${e.lvTxt?`<span class="st ${e.lv||'ok'}">${esc(e.lvTxt)}</span>`:'—'}</td><td class="dm">${esc(e.doc||'—')}</td><td>${e.done?fmtD(e.done):'—'}</td></tr>`).join('')}
+   </tbody></table></div>`;
+}
+function bindTimeline(root){ // tooltip เมื่อชี้/แตะจุด
+  root.querySelectorAll('.tlwrap').forEach(w=>{const tip=w.querySelector('.tltip');requestAnimationFrame(()=>{w.scrollLeft=w.scrollWidth}); // มือถือ: เลื่อนไปช่วงล่าสุด
+    const show=c=>{const t=JSON.parse(c.dataset.tip),r=c.getBoundingClientRect(),wr=w.getBoundingClientRect();
+      tip.innerHTML=`<b>${esc(t.f)}</b>เสีย ${esc(t.d)}${t.gap!==null?` · ห่างจากครั้งก่อน ${t.gap} วัน`:' · ครั้งแรกในข้อมูล'}${t.done?`<br>เสร็จ ${esc(t.done)}`:''}${t.lv?`<br>${esc(t.lv)}`:''}${t.doc?`<br>${esc(t.doc)}`:''}${t.sym?`<br><span class="small">${esc(t.sym)}</span>`:''}`;
+      tip.hidden=false;let x=r.left-wr.left+w.scrollLeft+12,y=r.top-wr.top+14;if(x+tip.offsetWidth>w.scrollLeft+w.clientWidth)x=r.left-wr.left+w.scrollLeft-tip.offsetWidth-12;tip.style.left=Math.max(4,x)+'px';tip.style.top=y+'px'};
+    w.querySelectorAll('.dot').forEach(c=>{c.addEventListener('mouseenter',()=>show(c));c.addEventListener('focus',()=>show(c));c.addEventListener('click',()=>show(c));
+      c.addEventListener('mouseleave',()=>tip.hidden=true);c.addEventListener('blur',()=>tip.hidden=true)})});
+}
+
+/* ---------- หน้า “วางแผน” ---------- */
+let pInit=false;
+function initPlanView(){
+  const P=buildPlan();
+  if(!pInit){pInit=true;setPreset('next30');}
+  const cur=$('pFam').value;
+  $('pFam').innerHTML='<option value="">อะไหล่ทุกชนิด</option>'+P.fams.filter(f=>P.cnt.get(f)>=10).map(f=>`<option value="${esc(f)}">${esc(famTitle(f))} (${P.cnt.get(f)})</option>`).join('');
+  $('pFam').value=cur;
+  $('pInfo').textContent=ST.sheets.length?`คำนวณจากประวัติ DM ${P.EV.length.toLocaleString()} รายการ · ข้อมูลล่าสุด ${fmtD(P.maxD)}`:'ยังไม่มีข้อมูลสถานะ DM ให้คำนวณ นำเข้าไฟล์สถานะในหน้า Admin ก่อน';
+  renderPlan();
+}
+function setPreset(p){
+  const t=dayStart(Date.now()),d=new Date(t);let a=t,b=t;
+  if(p==='next30'){a=t;b=t+29*DAY}else if(p==='next90'){a=t;b=t+89*DAY}
+  else if(p==='thisM'){a=new Date(d.getFullYear(),d.getMonth(),1).getTime();b=new Date(d.getFullYear(),d.getMonth()+1,0).getTime()}
+  else if(p==='nextM'){a=new Date(d.getFullYear(),d.getMonth()+1,1).getTime();b=new Date(d.getFullYear(),d.getMonth()+2,0).getTime()}
+  else if(p==='nextQ'){const q=Math.floor(d.getMonth()/3)+1;a=new Date(d.getFullYear(),q*3,1).getTime();b=new Date(d.getFullYear(),q*3+3,0).getTime()}
+  else if(p==='last90'){a=t-90*DAY;b=t-DAY}
+  $('pFrom').value=isoD(a);$('pTo').value=isoD(b);
+  document.querySelectorAll('#pPresets button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.p===p));
+}
+function getRange(){const a=Date.parse($('pFrom').value+'T00:00'),b=Date.parse($('pTo').value+'T00:00');return (a&&b&&b>=a)?[a,b+DAY-1]:null}
+function forecast(a,b,fam){ // คาดการณ์จำนวนชิ้นในช่วง [a,b] จากข้อมูลก่อนวันเริ่ม (ถ้าช่วงอยู่ในอดีต จะเทียบกับของจริงได้)
+  const P=buildPlan(),asOf=Math.min(a,dayStart(Date.now())),N=Math.round((b+1-a)/DAY),now=Date.now();
+  const fams=fam?[fam]:P.fams.filter(f=>P.cnt.get(f)>=10);
+  const one=(f,ds)=>{
+    const prior=ds.filter(d=>d<asOf),n90=prior.filter(d=>d>=asOf-90*DAY).length,n365=prior.filter(d=>d>=asOf-365*DAY).length;
+    let mn=asOf;for(const d of prior)if(d<mn)mn=d;
+    const span=Math.min(365,Math.max(1,(asOf-mn)/DAY));
+    const r365=n365/span,r90=n90/Math.min(90,span),mons=[];
+    for(let k=0;k<Math.min(12,Math.floor(span/30));k++){const hi=asOf-k*30*DAY,lo=hi-30*DAY;let c=0;for(const d of prior)if(d>=lo&&d<hi)c++;mons.push(c/30)}
+    mons.sort((x,y)=>x-y);const rate=mons.length?(pct(mons,.5)+r90)/2:r90,exp=rate*N; // ทดสอบย้อนหลังแล้วแม่นที่สุด: (มัธยฐานรายเดือน 12 เดือน + อัตรา 90 วันล่าสุด) / 2
+    let lo=exp,hi=exp;
+    if(N<=180&&span>=N+30){const w=[];for(let s=asOf-span*DAY;s+N*DAY<=asOf;s+=7*DAY){let c=0;for(const d of prior)if(d>=s&&d<s+N*DAY)c++;w.push(c)}
+      w.sort((x,y)=>x-y);const k=r365>0?rate/r365:1;lo=pct(w,.1)*k;hi=pct(w,.9)*k}
+    else{const sd=Math.sqrt(exp)*1.3;lo=Math.max(0,exp-1.28*sd);hi=exp+1.28*sd}
+    const today=dayStart(now),actual=a<today?ds.filter(d=>d>=a&&d<=Math.min(b,now)).length:null;
+    return {f,exp,lo:Math.min(lo,exp),hi:Math.max(hi,exp),actual};
+  };
+  const rows=[],all=[];
+  for(const f of fams){const ds=[];for(const e of P.EV)if(e.fam===f)ds.push(e.d);all.push(...ds);rows.push(one(f,ds))}
+  const total=one('',all);
+  rows.sort((x,y)=>y.exp-x.exp);
+  const today=dayStart(now);return {rows,total,N,asOf,past:a<today,partial:a<today&&b>now};
+}
+function dueList(a,b,fam){ // เครื่องที่ช่วงควรตรวจ/เปลี่ยนทับกับช่วงที่เลือก
+  const P=buildPlan(),out=[],now=Date.now();
+  for(const [k,v] of P.byKey){const f=v[0].fam;if(fam&&f!==fam)continue;const st=P.FS.get(f);if(!st)continue;
+    const last=v[v.length-1],base=last.done||last.d,from=base+st.p25*DAY,to=base+st.p75*DAY;
+    if(to<a||from>b)continue;const age=(now-base)/DAY;
+    out.push({fk:last.fk,code:last.code,f,base,from,to,mid:base+st.p50*DAY,cls:age<st.p25?'ok':age<st.p50?'l1':age<st.p75?'l2':'off',open:v.some(e=>e.lv&&e.lv!=='ok')});
+  }
+  return out.sort((x,y)=>x.mid-y.mid);
+}
+function badActors(days,fam){
+  const P=buildPlan(),now=Date.now(),since=now-days*DAY,m=new Map();
+  for(const e of P.EV){if(e.d<since||(fam&&e.fam!==fam))continue;let x=m.get(e.fk);if(!x){x={fk:e.fk,code:e.code,n:0,open:0,last:0,fams:new Map()};m.set(e.fk,x)}
+    x.n++;if(e.lv&&e.lv!=='ok')x.open++;x.last=Math.max(x.last,e.d);if(e.fam)x.fams.set(e.fam,(x.fams.get(e.fam)||0)+1)}
+  const list=[...m.values()].sort((a,b)=>b.n-a.n||b.last-a.last);
+  // ทดสอบย้อนหลัง: ณ 90 วันก่อน เครื่องที่เสียบ่อยสุด 10% เกิด DM ใหม่ใน 90 วันถัดมากี่ %
+  const cut=now-90*DAY,cnt=new Map(),after=new Set();
+  for(const e of P.EV){if(fam&&e.fam!==fam)continue;if(e.d<cut&&e.d>=cut-days*DAY)cnt.set(e.fk,(cnt.get(e.fk)||0)+1);else if(e.d>=cut)after.add(e.fk)}
+  const ks=[...cnt.entries()].sort((a,b)=>b[1]-a[1]),top=ks.slice(0,Math.max(1,Math.floor(ks.length/10)));
+  const rate=arr=>arr.length?arr.filter(([k])=>after.has(k)).length/arr.length:0;
+  return {list,avg:list.length?list.reduce((s,x)=>s+x.n,0)/list.length:0,bt:ks.length>=50?{top:rate(top),all:rate(ks)}:null};
+}
+function openMachine(fk){location.hash='#search';const m=MIDX.get(fk)||(DIDX.get(fk)||[])[0];$('q').value=m?m.code:fk;segTab='plan';showMachine(fk);window.scrollTo({top:0,behavior:'smooth'})}
+let dueCache=[],badCache=[];
+function renderPlan(){
+  if(!ST.sheets.length){for(const id of ['pForecast','pDue','pBad'])$(id).innerHTML='';return}
+  const r=getRange();if(!r){$('pForecast').innerHTML='<div class="empty">เลือกวันที่ “ถึง” ให้อยู่หลังวันที่ “ตั้งแต่”</div>';return}
+  const [a,b]=r,fam=$('pFam').value,F=forecast(a,b,fam);
+  const max=Math.max(1,...F.rows.map(x=>Math.max(x.hi,x.actual||0)));
+  const tot={exp:F.total.exp,lo:F.total.lo,hi:F.total.hi,act:F.total.actual||0};
+  $('pForecast').innerHTML=`<div class="panel"><span class="kind">พยากรณ์จำนวนอะไหล่</span><h2>คาดว่าจะใช้อะไหล่ ${fmtD(a)} – ${fmtD(b)} <span class="chip">${F.N} วัน</span></h2>
+    <div class="small">คำนวณจากอัตราการเสียปกติรายเดือนย้อนหลัง 12 เดือน ผสมกับ 90 วันล่าสุด ก่อน ${fmtD(F.asOf)} · ทดสอบย้อนหลังคลาดเคลื่อนรายชนิดราว 35–40% ใช้เป็นตัวเลขตั้งต้นสำหรับสต็อก ไม่ใช่ยอดตายตัว${F.past?' · ช่วงนี้มีข้อมูลจริงแล้ว จึงแสดงคู่กับของจริงให้เทียบความแม่นได้':''}${F.partial?' (ของจริงนับถึงวันนี้)':''}</div></div>
+    <div class="tbl"><table class="fc"><thead><tr><th>อะไหล่</th><th>คาดว่าใช้</th><th>ช่วงที่เป็นไปได้</th>${F.past?'<th>ใช้จริง</th>':''}<th class="barh"></th></tr></thead><tbody>
+    ${F.rows.slice(0,fam?1:15).map(x=>`<tr><td class="wr">${esc(famTitle(x.f))}</td><td><b>${Math.round(x.exp)}</b></td><td>${Math.round(x.lo)} – ${Math.round(x.hi)}</td>${F.past?`<td>${x.actual}</td>`:''}
+      <td class="barc"><div class="bar"><i class="rng" style="left:${x.lo/max*100}%;width:${Math.max(.5,(x.hi-x.lo)/max*100)}%"></i><i class="pt" style="left:${x.exp/max*100}%"></i>${F.past&&x.actual!==null?`<i class="act" style="left:${x.actual/max*100}%"></i>`:''}</div></td></tr>`).join('')}
+    ${!fam?`<tr class="tot"><td>รวมทุกชนิด</td><td><b>${Math.round(tot.exp)}</b></td><td>${Math.round(tot.lo)} – ${Math.round(tot.hi)}</td>${F.past?`<td>${tot.act}</td>`:''}<td></td></tr>`:''}
+    </tbody></table></div><div class="pnote"><span class="lg"><i class="pt"></i>ค่าที่คาด</span><span class="lg"><i class="rng"></i>ช่วงที่เป็นไปได้ (80%)</span>${F.past?'<span class="lg"><i class="act"></i>ใช้จริง</span>':''}</div>`;
+  dueCache=dueList(a,b,fam);
+  const dueN=new Set(dueCache.map(x=>x.fk)).size;
+  $('pDue').innerHTML=`<div class="panel"><span class="kind">แผนเปลี่ยนรายเครื่อง</span><h2>ถึงช่วงควรตรวจ/เปลี่ยนในช่วงนี้ <span class="chip">${dueN.toLocaleString()} เครื่อง</span></h2>
+    <div class="btns"><button class="ghost sm" type="button" id="pDueXl">ดาวน์โหลดรายการเป็น Excel</button></div></div>
+    ${dueCache.length?`<div class="tbl scroll"><table><thead><tr><th>เครื่องจักร</th><th>อะไหล่</th><th>ล่าสุด</th><th>ช่วงควรตรวจ/เปลี่ยน</th><th>สถานะวันนี้</th></tr></thead><tbody>
+    ${dueCache.slice(0,300).map((x,i)=>`<tr class="${x.cls!=='ok'?x.cls:''}"><td><button class="lnk" type="button" data-fk="${esc(x.fk)}">${esc(x.code)}</button></td><td class="wr">${esc(famTitle(x.f))}${x.open?' <span class="st off">DM ค้าง</span>':''}</td><td>${fmtD(x.base)}</td><td>${fmtD(x.from)} – ${fmtD(x.to)}</td><td><span class="st ${x.cls}">${PLAN_LBL[x.cls]}</span></td></tr>`).join('')}
+    </tbody></table></div>${dueCache.length>300?`<div class="pnote">แสดง 300 จาก ${dueCache.length.toLocaleString()} รายการ ดาวน์โหลด Excel เพื่อดูทั้งหมด</div>`:''}`:'<div class="empty">ไม่มีเครื่องที่ถึงช่วงควรตรวจ/เปลี่ยนในช่วงนี้</div>'}`;
+  $('pDueXl').onclick=()=>downloadBook([{name:'แผนเปลี่ยนอะไหล่',headers:['เครื่องจักร','อะไหล่','เสีย/เปลี่ยนล่าสุด','เริ่มช่วงควรตรวจ','ค่ากลาง','สิ้นสุดช่วง','สถานะวันนี้','มี DM ค้าง'],
+    rows:dueCache.map(x=>[x.code,famTitle(x.f),fmtD(x.base),fmtD(x.from),fmtD(x.mid),fmtD(x.to),PLAN_LBL[x.cls],x.open?'ใช่':''])}],`plan-${$('pFrom').value}_${$('pTo').value}.xlsx`,'pStatus');
+  renderBad();
+  $('v-plan').querySelectorAll('[data-fk]').forEach(b=>b.onclick=()=>openMachine(b.dataset.fk));
+}
+function renderBad(){
+  const days=+$('pBadDays').value,fam=$('pFam').value,B=badActors(days,fam);badCache=B.list;
+  $('pBad').innerHTML=`<div class="panel"><span class="kind">Bad actor</span><h2>เครื่องที่เสียบ่อย</h2>
+    <label class="field inl"><span>ดูย้อนหลัง</span><select id="pBadDays2">${[90,180,365,730].map(d=>`<option value="${d}"${d===days?' selected':''}>${d} วัน</option>`).join('')}</select></label>
+    <div class="small">${B.list.length.toLocaleString()} เครื่องมี DM ในช่วงนี้ · เฉลี่ย ${B.avg.toFixed(1)} ครั้ง/เครื่อง${B.bt?` · ทดสอบย้อนหลัง: เครื่องที่เสียบ่อยสุด 10% เกิด DM ใหม่ภายใน 90 วัน ${Math.round(B.bt.top*100)}% เทียบค่าเฉลี่ย ${Math.round(B.bt.all*100)}%`:''}</div></div>
+    ${B.list.length?`<div class="tbl scroll"><table><thead><tr><th>#</th><th>เครื่องจักร</th><th>DM</th><th>ค้าง</th><th>อะไหล่ที่เสียบ่อย</th><th>ล่าสุด</th></tr></thead><tbody>
+    ${B.list.slice(0,50).map((x,i)=>{const top=[...x.fams.entries()].sort((a,b)=>b[1]-a[1]).slice(0,2).map(([f,n])=>`${famTitle(f)} ×${n}`).join(', ');
+      return `<tr><td>${i+1}</td><td><button class="lnk" type="button" data-fk="${esc(x.fk)}">${esc(x.code)}</button></td><td><b>${x.n}</b></td><td>${x.open?`<span class="st off">${x.open}</span>`:'—'}</td><td class="wr">${esc(top||'—')}</td><td>${fmtD(x.last)}</td></tr>`}).join('')}
+    </tbody></table></div>`:'<div class="empty">ไม่มี DM ในช่วงนี้</div>'}`;
+  $('pBadDays2').onchange=()=>{$('pBadDays').value=$('pBadDays2').value;renderBad()};
+  $('pBad').querySelectorAll('[data-fk]').forEach(b=>b.onclick=()=>openMachine(b.dataset.fk));
+}
+document.querySelectorAll('#pPresets button').forEach(b=>b.onclick=()=>{setPreset(b.dataset.p);renderPlan()});
+for(const id of ['pFrom','pTo'])$(id).addEventListener('change',()=>{document.querySelectorAll('#pPresets button').forEach(x=>x.setAttribute('aria-pressed','false'));renderPlan()});
+$('pFam').addEventListener('change',renderPlan);
 
 /* ---------- ความปลอดภัย: ล็อกอิน + เข้ารหัสข้อมูล (AES-256-GCM, PBKDF2-SHA256) + สิทธิ์ผู้ใช้ ---------- */
 const UKEY='machine-users-cache-v1',SESS='machine-session-v1',PBKDF2_ITER=600000;
