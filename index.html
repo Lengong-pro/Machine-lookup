@@ -257,7 +257,7 @@ dl>:nth-last-child(-n+2){border-bottom:0}
 .kpis.q4{grid-template-columns:repeat(4,1fr)}@media (max-width:560px){.kpis.q4{grid-template-columns:1fr 1fr}}
 .qt td.ck,.qt th.ck{width:34px;text-align:center}.qt input[type=checkbox]{width:17px;height:17px;accent-color:var(--accent);margin:0}
 .qt tr.qp{cursor:pointer}.qt tr.qp td.nm{font-weight:600}.qt tr.qp td.nm .ar{display:inline-block;transition:transform .15s;color:var(--muted);margin-right:4px}
-.qt tr.qp.open td.nm .ar{transform:rotate(90deg)}.qt tr.qd>td{padding:0 0 10px 34px;background:var(--surface-2)}
+.qt tr.qp:hover td{background:var(--surface-2)}.qt tr.qd>td{padding:0 0 10px 34px;background:var(--surface-2)}
 .qt table.in{width:100%;font-size:13px}.qt table.in td,.qt table.in th{padding:6px 8px}
 .tbl tr.pick{cursor:pointer}.tbl tr.pick:hover td{background:var(--surface-2)}.tbl tr.sel td{background:color-mix(in srgb,var(--accent) 12%,transparent)}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
@@ -378,6 +378,13 @@ details ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
 .mhead{background:linear-gradient(100deg,var(--navy),var(--navy-2));color:#fff;padding:16px 18px;display:flex;align-items:center;gap:10px}
 .mhead h2{margin:0;font-family:var(--f-display);font-size:22px;letter-spacing:.03em}
 .mbody{padding:18px;display:flex;flex-direction:column;gap:12px}
+.mcard.wide{max-width:1000px;max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);display:flex;flex-direction:column}
+.mcard.wide .mhead h2{font-size:19px;overflow-wrap:anywhere;flex:1;min-width:0}
+.mhead .mx{margin-left:auto;background:rgba(255,255,255,.12);border:0;color:#fff;font-size:26px;line-height:1;width:38px;height:38px;border-radius:12px;cursor:pointer;flex:none}
+.mbody.qm{overflow:auto;min-height:0;padding:14px 16px 18px}.mbody.qm .tbl{margin:0}.mbody.qm thead th{position:sticky;top:-14px;z-index:1}
+.qmsel{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px}.qmsel input{width:17px;height:17px;accent-color:var(--accent);margin:0}
+@media (max-width:560px){.modal:has(.mcard.wide){padding:8px}.mcard.wide{max-height:calc(100dvh - 16px);border-radius:16px}}
+.upd{position:fixed;left:50%;transform:translateX(-50%);top:78px;z-index:80;background:var(--surface);color:var(--fg);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:14px;padding:10px 12px 10px 16px;display:flex;align-items:center;gap:12px;font-weight:600;max-width:calc(100vw - 24px)}
 </style>
 </head>
 <body>
@@ -438,7 +445,7 @@ details ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
     <div class="ubox" id="ubox" hidden>
       <button type="button" class="ubtn" id="umenuBtn" aria-haspopup="true" aria-expanded="false"><span class="av" id="uav"></span><span class="nm" id="uname"></span></button>
       <div class="umenu" id="umenu" hidden>
-        <div class="who"><b id="uname2"></b><span class="role" id="urole"></span><span class="small" style="display:block;margin-top:4px;opacity:.7">เวอร์ชัน 29</span></div>
+        <div class="who"><b id="uname2"></b><span class="role" id="urole"></span><span class="small" id="uver" style="display:block;margin-top:4px;opacity:.7"></span></div>
         <button type="button" id="uchpw"><svg class="ic"><use href="#i-key"/></svg>เปลี่ยนรหัสผ่าน</button>
         <button type="button" id="ulogout"><svg class="ic"><use href="#i-logout"/></svg>ออกจากระบบ</button>
       </div>
@@ -640,6 +647,13 @@ details ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
 </div>
 </div>
 
+<div class="modal" id="qModal" hidden role="dialog" aria-modal="true" aria-labelledby="qmTitle">
+  <div class="mcard wide">
+    <div class="mhead"><svg class="ic"><use href="#i-box"/></svg><h2 id="qmTitle"></h2><button type="button" class="mx" id="qmClose" aria-label="ปิด">×</button></div>
+    <div class="mbody qm"><div class="small" id="qmSub"></div><label class="qmsel"><input type="checkbox" id="qmPick"> เลือกอะไหล่นี้เพื่อขอเบิก</label><div id="qmList"></div></div>
+  </div>
+</div>
+<div class="upd" id="updBar" hidden role="status"><span id="updTxt"></span><button type="button" class="cta sm" id="updBtn">โหลดเวอร์ชันใหม่</button></div>
 <div class="modal" id="pwModal" hidden role="dialog" aria-modal="true" aria-labelledby="pwTitle">
   <form class="mcard" id="pwForm" autocomplete="on">
     <div class="mhead"><svg class="ic"><use href="#i-key"/></svg><h2 id="pwTitle">เปลี่ยนรหัสผ่าน</h2></div>
@@ -1451,6 +1465,13 @@ function famOf(sym,part){ // จัดกลุ่มอะไหล่จาก
   return t.length>=3?t:'';
 }
 let PLAN=null;
+const APP_VER=30; // เพิ่มทุกครั้งที่อัปโหลด index.html ใหม่ ระบบจะเตือนเครื่องที่ยังเปิดเวอร์ชันเก่าค้างไว้
+function checkUpdate(){
+  if(!/github\.io$/i.test(location.hostname))return;
+  fetch(location.pathname+'?_='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'').then(t=>{const m=t.match(/const APP_VER=(\d+)/);
+    if(m&&+m[1]>APP_VER){$('updTxt').textContent=`มีเวอร์ชันใหม่ (${m[1]}) — คุณกำลังใช้เวอร์ชัน ${APP_VER}`;$('updBar').hidden=false;
+      $('updBtn').onclick=()=>location.replace(location.pathname+'?v='+m[1]+location.hash)}}).catch(()=>{});
+}
 const NOAREA='No Area',TMS='TMS';
 const isTray=c=>/^([ML]-)?TRAY/.test(norm(c)); // M-Tray NO-xxxx / L-Tray NO-xxx / Tray-xxxxx → พื้นที่ TMS
 function areaOf(fk){const d=(DIDX.get(fk)||[])[0];if(!d)return '';const i=d.sh.headers.findIndex(h=>/^sub\s*area$/i.test(String(h).trim()));return i<0?'':String(d.r[i]??'').trim()}
@@ -1799,7 +1820,7 @@ function renderBad(){
   $('pBad').querySelectorAll('[data-fk]').forEach(b=>b.onclick=()=>openMachine(b.dataset.fk));
 }
 /* ---------- อะไหล่ชำรุด: DM ที่ยังเปิดอยู่ จัดกลุ่มตามชื่ออะไหล่ เพื่อทำเรื่องขอเบิก ---------- */
-let QLV='',QSEL=new Set(),QOPEN=new Set(),qCache=[],qInit=false,QRESET=false;
+let QLV='',QSEL=new Set(),qCache=[],qInit=false,QRESET=false;
 const QLV_K=[['','DM เปิดอยู่ทั้งหมด',''],['off','ปิดใช้งาน','red'],['l2','ระดับ 2–3','org'],['l1','ระดับ 1','yel']];
 const QLV_TXT={off:'ปิดใช้งาน',l2:'ระดับ 2–3',l1:'ระดับ 1'};
 const planOf=t=>/รอ/.test(t)?'รอ':/เฝ้าระวัง/.test(t)?'เฝ้าระวัง':t;
@@ -1827,6 +1848,21 @@ function partGroups(){
   L.sort(so==='az'?(a,b)=>a.name.localeCompare(b.name):so==='old'?(a,b)=>a.old-b.old:so==='sev'?(a,b)=>b.off-a.off||b.l2-a.l2||b.n-a.n:(a,b)=>b.n-a.n||a.name.localeCompare(b.name));
   return {L,cnt};
 }
+function openPartModal(g,syncSel){
+  const today=dayStart(Date.now()),M=$('qModal');
+  $('qmTitle').textContent=g.name;
+  $('qmSub').innerHTML=`DM ที่ยังเปิดอยู่ <b>${g.n.toLocaleString()}</b> ใบ`+[['off',g.off],['l2',g.l2],['l1',g.l1]].filter(x=>x[1]).map(([k,n])=>` · <span class="st ${k}">${QLV_TXT[k]} ${n}</span>`).join('')+` · ค้างนานสุด ${g.days.toLocaleString()} วัน`;
+  $('qmPick').checked=QSEL.has(g.k);
+  $('qmPick').onchange=()=>{$('qmPick').checked?QSEL.add(g.k):QSEL.delete(g.k);const c=[...$('qList').querySelectorAll('tr.qp input')].find(x=>x.dataset.k===g.k);if(c)c.checked=$('qmPick').checked;syncSel()};
+  $('qmList').innerHTML=`<div class="tbl"><table><thead><tr><th>เลข DM</th><th>ตำแหน่ง</th><th>พื้นที่</th><th>วันที่เสีย</th><th>ระดับ</th><th>แผน</th><th>อาการ</th></tr></thead><tbody>
+    ${g.list.map(e=>`<tr><td>${esc(e.doc||'—')}</td><td><button class="lnk" type="button" data-fk="${esc(e.fk)}">${esc(e.code)}</button></td><td>${esc(e.area||'')}</td><td>${fmtD(e.d)} <span class="small">(${Math.round((today-dayStart(e.d))/DAY).toLocaleString()} วัน)</span></td><td><span class="st ${e.lv}">${QLV_TXT[e.lv]||esc(e.lvTxt)}</span></td><td>${esc(planOf(e.plan)||'—')}</td><td class="wr">${esc(e.sym)}</td></tr>`).join('')}</tbody></table></div>`;
+  $('qmList').querySelectorAll('[data-fk]').forEach(b=>b.onclick=()=>{closePartModal();openMachine(b.dataset.fk)});
+  M.hidden=false;document.body.style.overflow='hidden';M.querySelector('.mbody').scrollTop=0;$('qmClose').focus({preventScroll:true});
+}
+function closePartModal(){if($('qModal').hidden)return;$('qModal').hidden=true;document.body.style.overflow=''}
+$('qmClose').onclick=closePartModal;
+$('qModal').addEventListener('click',e=>{if(e.target===$('qModal'))closePartModal()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closePartModal()});
 function renderParts(){
   if(!ST.sheets.length){$('qInfo').textContent='ยังไม่มีข้อมูลสถานะ DM นำเข้าไฟล์สถานะในหน้า Admin ก่อน';$('qList').innerHTML='';$('qKpi').innerHTML='';return}
   const P=buildPlan(),{L,cnt}=partGroups(),today=dayStart(Date.now());qCache=L;
@@ -1839,23 +1875,16 @@ function renderParts(){
     $('qSel').textContent=QSEL.size?` เลือก ${QSEL.size} ชนิด · ${selN.toLocaleString()} รายการ`:` ยังไม่ได้เลือก → ดาวน์โหลดทั้ง ${L.length.toLocaleString()} ชนิดที่แสดง`;
     const a=$('qAll');if(a){a.checked=QSEL.size>0&&QSEL.size===L.length;a.indeterminate=QSEL.size>0&&QSEL.size<L.length}};
   syncSel();
-  const det=g=>`<tr class="qd"><td colspan="7"><div class="tbl"><table class="in"><thead><tr><th>เลข DM</th><th>ตำแหน่ง</th><th>พื้นที่</th><th>วันที่เสีย</th><th>ระดับ</th><th>แผน</th><th>อาการ</th></tr></thead><tbody>
-    ${g.list.slice(0,300).map(e=>`<tr><td>${esc(e.doc||'—')}</td><td><button class="lnk" type="button" data-fk="${esc(e.fk)}">${esc(e.code)}</button></td><td>${esc(e.area||'')}</td><td>${fmtD(e.d)} <span class="small">(${Math.round((today-dayStart(e.d))/DAY).toLocaleString()} วัน)</span></td><td><span class="st ${e.lv}">${QLV_TXT[e.lv]||esc(e.lvTxt)}</span></td><td>${esc(planOf(e.plan)||'—')}</td><td class="wr">${esc(e.sym)}</td></tr>`).join('')}</tbody></table></div>${g.list.length>300?`<div class="pnote">แสดง 300 จาก ${g.n.toLocaleString()} ใบ ดาวน์โหลด Excel เพื่อดูทั้งหมด</div>`:''}</td></tr>`;
   const oldSc=$('qList').querySelector('.qt'),keepTop=oldSc?oldSc.scrollTop:0;
   $('qList').innerHTML=L.length?`<div class="tbl scroll qt" style="max-height:640px"><table><thead><tr><th class="ck"><input type="checkbox" id="qAll" aria-label="เลือกทั้งหมด"${QSEL.size&&QSEL.size===L.length?' checked':''}></th><th>อะไหล่ (${L.length.toLocaleString()} ชนิด)</th><th>จำนวน</th><th>ปิดใช้งาน</th><th>ระดับ 2–3</th><th>ระดับ 1</th><th>ค้างนานสุด</th></tr></thead><tbody>
-    ${L.map(g=>`<tr class="qp${QOPEN.has(g.k)?' open':''}" data-k="${esc(g.k)}"><td class="ck"><input type="checkbox" data-k="${esc(g.k)}"${QSEL.has(g.k)?' checked':''} aria-label="เลือก ${esc(g.name)}"></td><td class="nm wr"><span class="ar">▸</span>${esc(g.name)}</td><td><b>${g.n.toLocaleString()}</b></td><td>${g.off?`<span class="st off">${g.off}</span>`:'—'}</td><td>${g.l2?`<span class="st l2">${g.l2}</span>`:'—'}</td><td>${g.l1?`<span class="st l1">${g.l1}</span>`:'—'}</td><td>${g.days.toLocaleString()} วัน</td></tr>${QOPEN.has(g.k)?det(g):''}`).join('')}
-    </tbody></table></div><div class="pnote">แตะชื่ออะไหล่เพื่อดูเลข DM และตำแหน่งที่แจ้ง · ติ๊กเลือกเฉพาะอะไหล่ที่จะขอเบิกแล้วกดดาวน์โหลด</div>`:'<div class="empty">ไม่มี DM ที่เปิดอยู่ตามเงื่อนไขนี้</div>';
+    ${L.map(g=>`<tr class="qp" data-k="${esc(g.k)}"><td class="ck"><input type="checkbox" data-k="${esc(g.k)}"${QSEL.has(g.k)?' checked':''} aria-label="เลือก ${esc(g.name)}"></td><td class="nm wr">${esc(g.name)} <span class="ar">›</span></td><td><b>${g.n.toLocaleString()}</b></td><td>${g.off?`<span class="st off">${g.off}</span>`:'—'}</td><td>${g.l2?`<span class="st l2">${g.l2}</span>`:'—'}</td><td>${g.l1?`<span class="st l1">${g.l1}</span>`:'—'}</td><td>${g.days.toLocaleString()} วัน</td></tr>`).join('')}
+    </tbody></table></div><div class="pnote">แตะชื่ออะไหล่เพื่อเปิดหน้าต่างรายการเลข DM และตำแหน่งที่แจ้ง · ติ๊กเลือกเฉพาะอะไหล่ที่จะขอเบิกแล้วกดดาวน์โหลด</div>`:'<div class="empty">ไม่มี DM ที่เปิดอยู่ตามเงื่อนไขนี้</div>';
   const list=$('qList'),sc=list.querySelector('.qt');if(sc&&keepTop&&!QRESET)sc.scrollTop=keepTop;QRESET=false;
-  // กาง/พับเฉพาะแถวที่กด ไม่วาดตารางใหม่ ตำแหน่งที่เลื่อนไว้จึงอยู่ที่เดิม
-  const byK=new Map(L.map(g=>[g.k,g])),bindFk=el=>el.querySelectorAll('[data-fk]').forEach(b=>b.onclick=ev=>{ev.stopPropagation();openMachine(b.dataset.fk)});
-  list.querySelectorAll('tr.qp').forEach(tr=>tr.onclick=ev=>{if(ev.target.closest('input'))return;const k=tr.dataset.k,nx=tr.nextElementSibling,sc=list.querySelector('.qt'),y0=tr.getBoundingClientRect().top;
-    const pin=()=>{const d=tr.getBoundingClientRect().top-y0;if(Math.abs(d)>1)sc.scrollTop+=d}; // ตรึงแถวที่กดไว้ที่เดิม แม้ความกว้างคอลัมน์จะเปลี่ยน
-    if(QOPEN.has(k)){QOPEN.delete(k);tr.classList.remove('open');if(nx&&nx.classList.contains('qd'))nx.remove()}
-    else{QOPEN.add(k);tr.classList.add('open');tr.insertAdjacentHTML('afterend',det(byK.get(k)));bindFk(tr.nextElementSibling)}
-    pin()});
+  // แตะชื่ออะไหล่ → เปิดหน้าต่างป๊อปอัพ ตารางด้านหลังไม่ถูกวาดใหม่และไม่ขยับ
+  const byK=new Map(L.map(g=>[g.k,g]));
+  list.querySelectorAll('tr.qp').forEach(tr=>tr.onclick=ev=>{if(ev.target.closest('input'))return;openPartModal(byK.get(tr.dataset.k),syncSel)});
   list.querySelectorAll('tr.qp input').forEach(c=>c.onchange=()=>{c.checked?QSEL.add(c.dataset.k):QSEL.delete(c.dataset.k);syncSel()});
   const all=$('qAll');if(all){syncSel();all.onchange=()=>{QSEL=all.checked?new Set(L.map(g=>g.k)):new Set();list.querySelectorAll('tr.qp input').forEach(c=>c.checked=all.checked);syncSel()}}
-  bindFk(list);
   $('qXl').onclick=()=>{const G=QSEL.size?L.filter(g=>QSEL.has(g.k)):L;
     downloadBook([{name:'สรุปขอเบิก',headers:['ลำดับ','อะไหล่','จำนวน (รายการ)','ปิดใช้งาน','ระดับ 2–3','ระดับ 1','ค้างนานสุด (วัน)','เลข DM'],rows:G.map((g,i)=>[i+1,g.name,g.n,g.off,g.l2,g.l1,g.days,g.list.map(e=>e.doc).filter(Boolean).join(', ')])},
       {name:'รายการ DM',headers:['อะไหล่','เลข DM','ตำแหน่ง','พื้นที่','วันที่เสีย','ค้าง (วัน)','ระดับ','แผนการแก้ไข','WORK PERMIT','อาการ'],rows:G.flatMap(g=>g.list.map(e=>[g.name,e.doc,e.code,e.area||'',fmtD(e.d),Math.round((today-dayStart(e.d))/DAY),e.lvTxt,e.plan,e.wp,e.sym]))}],
@@ -1949,6 +1978,8 @@ document.querySelectorAll('.eye').forEach(b=>b.addEventListener('click',()=>{
 const closeMenu=()=>{$('umenu').hidden=true;$('umenuBtn').setAttribute('aria-expanded','false')};
 $('umenuBtn').onclick=e=>{e.stopPropagation();const o=$('umenu').hidden;$('umenu').hidden=!o;$('umenuBtn').setAttribute('aria-expanded',o)};
 document.addEventListener('click',e=>{if(!$('umenu').hidden&&!$('ubox').contains(e.target))closeMenu()});
+$('uver').textContent='เวอร์ชัน '+APP_VER;
+checkUpdate();setInterval(checkUpdate,10*60*1000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkUpdate()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeMenu();if(!$('pwModal').hidden)closePw()}});
 $('ulogout').onclick=()=>{ss.del(SESS);ls.del(SESS);ss.del(GKEY);location.hash='';location.reload()};
 
