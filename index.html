@@ -1799,7 +1799,7 @@ function renderBad(){
   $('pBad').querySelectorAll('[data-fk]').forEach(b=>b.onclick=()=>openMachine(b.dataset.fk));
 }
 /* ---------- อะไหล่ชำรุด: DM ที่ยังเปิดอยู่ จัดกลุ่มตามชื่ออะไหล่ เพื่อทำเรื่องขอเบิก ---------- */
-let QLV='',QSEL=new Set(),QOPEN=new Set(),qCache=[],qInit=false;
+let QLV='',QSEL=new Set(),QOPEN=new Set(),qCache=[],qInit=false,QRESET=false;
 const QLV_K=[['','DM เปิดอยู่ทั้งหมด',''],['off','ปิดใช้งาน','red'],['l2','ระดับ 2–3','org'],['l1','ระดับ 1','yel']];
 const QLV_TXT={off:'ปิดใช้งาน',l2:'ระดับ 2–3',l1:'ระดับ 1'};
 const planOf=t=>/รอ/.test(t)?'รอ':/เฝ้าระวัง/.test(t)?'เฝ้าระวัง':t;
@@ -1808,8 +1808,8 @@ function initParts(){
   const P=buildPlan(),ca=$('qArea').value;
   $('qArea').innerHTML=`<option value="">ทุกพื้นที่</option>`+P.areas.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');
   $('qArea').value=P.areas.includes(ca)?ca:'';
-  if(!qInit){qInit=true;let t;$('qQ').addEventListener('input',()=>{clearTimeout(t);t=setTimeout(renderParts,200)});
-    for(const id of ['qPlan','qSort','qArea'])$(id).addEventListener('change',renderParts)}
+  if(!qInit){qInit=true;let t;$('qQ').addEventListener('input',()=>{clearTimeout(t);t=setTimeout(()=>{QRESET=true;renderParts()},200)});
+    for(const id of ['qPlan','qSort','qArea'])$(id).addEventListener('change',()=>{QRESET=true;renderParts()})}
   renderParts();
 }
 function partGroups(){
@@ -1833,20 +1833,29 @@ function renderParts(){
   const allOpen=P.EV.reduce((s,e)=>s+(e.lv&&e.lv!=='ok'?1:0),0);
   $('qInfo').textContent=`DM ที่ยังไม่ปิด ${allOpen.toLocaleString()} ใบ · ข้อมูลล่าสุด ${fmtD(P.maxD)} · นับ DM 1 ใบ = อะไหล่ 1 รายการ`;
   $('qKpi').innerHTML=QLV_K.map(([k,t,c])=>`<button type="button" class="kpi ${c}" data-q="${k}" aria-pressed="${QLV===k}"><b>${(cnt[k]||0).toLocaleString()}</b><span>${t}</span></button>`).join('');
-  $('qKpi').querySelectorAll('.kpi').forEach(b=>b.onclick=()=>{QLV=b.dataset.q;renderParts()});
+  $('qKpi').querySelectorAll('.kpi').forEach(b=>b.onclick=()=>{QLV=b.dataset.q;QRESET=true;renderParts()});
   const keys=new Set(L.map(g=>g.k));for(const k of [...QSEL])if(!keys.has(k))QSEL.delete(k);
-  const selN=L.filter(g=>QSEL.has(g.k)).reduce((s,g)=>s+g.n,0);
-  $('qSel').textContent=QSEL.size?` เลือก ${QSEL.size} ชนิด · ${selN.toLocaleString()} รายการ`:` ยังไม่ได้เลือก → ดาวน์โหลดทั้ง ${L.length.toLocaleString()} ชนิดที่แสดง`;
+  const syncSel=()=>{const selN=L.filter(g=>QSEL.has(g.k)).reduce((s,g)=>s+g.n,0);
+    $('qSel').textContent=QSEL.size?` เลือก ${QSEL.size} ชนิด · ${selN.toLocaleString()} รายการ`:` ยังไม่ได้เลือก → ดาวน์โหลดทั้ง ${L.length.toLocaleString()} ชนิดที่แสดง`;
+    const a=$('qAll');if(a){a.checked=QSEL.size>0&&QSEL.size===L.length;a.indeterminate=QSEL.size>0&&QSEL.size<L.length}};
+  syncSel();
   const det=g=>`<tr class="qd"><td colspan="7"><div class="tbl"><table class="in"><thead><tr><th>เลข DM</th><th>ตำแหน่ง</th><th>พื้นที่</th><th>วันที่เสีย</th><th>ระดับ</th><th>แผน</th><th>อาการ</th></tr></thead><tbody>
     ${g.list.slice(0,300).map(e=>`<tr><td>${esc(e.doc||'—')}</td><td><button class="lnk" type="button" data-fk="${esc(e.fk)}">${esc(e.code)}</button></td><td>${esc(e.area||'')}</td><td>${fmtD(e.d)} <span class="small">(${Math.round((today-dayStart(e.d))/DAY).toLocaleString()} วัน)</span></td><td><span class="st ${e.lv}">${QLV_TXT[e.lv]||esc(e.lvTxt)}</span></td><td>${esc(planOf(e.plan)||'—')}</td><td class="wr">${esc(e.sym)}</td></tr>`).join('')}</tbody></table></div>${g.list.length>300?`<div class="pnote">แสดง 300 จาก ${g.n.toLocaleString()} ใบ ดาวน์โหลด Excel เพื่อดูทั้งหมด</div>`:''}</td></tr>`;
+  const oldSc=$('qList').querySelector('.qt'),keepTop=oldSc?oldSc.scrollTop:0;
   $('qList').innerHTML=L.length?`<div class="tbl scroll qt" style="max-height:640px"><table><thead><tr><th class="ck"><input type="checkbox" id="qAll" aria-label="เลือกทั้งหมด"${QSEL.size&&QSEL.size===L.length?' checked':''}></th><th>อะไหล่ (${L.length.toLocaleString()} ชนิด)</th><th>จำนวน</th><th>ปิดใช้งาน</th><th>ระดับ 2–3</th><th>ระดับ 1</th><th>ค้างนานสุด</th></tr></thead><tbody>
     ${L.map(g=>`<tr class="qp${QOPEN.has(g.k)?' open':''}" data-k="${esc(g.k)}"><td class="ck"><input type="checkbox" data-k="${esc(g.k)}"${QSEL.has(g.k)?' checked':''} aria-label="เลือก ${esc(g.name)}"></td><td class="nm wr"><span class="ar">▸</span>${esc(g.name)}</td><td><b>${g.n.toLocaleString()}</b></td><td>${g.off?`<span class="st off">${g.off}</span>`:'—'}</td><td>${g.l2?`<span class="st l2">${g.l2}</span>`:'—'}</td><td>${g.l1?`<span class="st l1">${g.l1}</span>`:'—'}</td><td>${g.days.toLocaleString()} วัน</td></tr>${QOPEN.has(g.k)?det(g):''}`).join('')}
     </tbody></table></div><div class="pnote">แตะชื่ออะไหล่เพื่อดูเลข DM และตำแหน่งที่แจ้ง · ติ๊กเลือกเฉพาะอะไหล่ที่จะขอเบิกแล้วกดดาวน์โหลด</div>`:'<div class="empty">ไม่มี DM ที่เปิดอยู่ตามเงื่อนไขนี้</div>';
-  const list=$('qList');
-  list.querySelectorAll('tr.qp').forEach(tr=>tr.onclick=ev=>{if(ev.target.closest('input'))return;const k=tr.dataset.k;QOPEN.has(k)?QOPEN.delete(k):QOPEN.add(k);renderParts()});
-  list.querySelectorAll('tr.qp input').forEach(c=>c.onchange=()=>{c.checked?QSEL.add(c.dataset.k):QSEL.delete(c.dataset.k);renderParts()});
-  const all=$('qAll');if(all)all.onchange=()=>{QSEL=all.checked?new Set(L.map(g=>g.k)):new Set();renderParts()};
-  list.querySelectorAll('[data-fk]').forEach(b=>b.onclick=ev=>{ev.stopPropagation();openMachine(b.dataset.fk)});
+  const list=$('qList'),sc=list.querySelector('.qt');if(sc&&keepTop&&!QRESET)sc.scrollTop=keepTop;QRESET=false;
+  // กาง/พับเฉพาะแถวที่กด ไม่วาดตารางใหม่ ตำแหน่งที่เลื่อนไว้จึงอยู่ที่เดิม
+  const byK=new Map(L.map(g=>[g.k,g])),bindFk=el=>el.querySelectorAll('[data-fk]').forEach(b=>b.onclick=ev=>{ev.stopPropagation();openMachine(b.dataset.fk)});
+  list.querySelectorAll('tr.qp').forEach(tr=>tr.onclick=ev=>{if(ev.target.closest('input'))return;const k=tr.dataset.k,nx=tr.nextElementSibling,sc=list.querySelector('.qt'),y0=tr.getBoundingClientRect().top;
+    const pin=()=>{const d=tr.getBoundingClientRect().top-y0;if(Math.abs(d)>1)sc.scrollTop+=d}; // ตรึงแถวที่กดไว้ที่เดิม แม้ความกว้างคอลัมน์จะเปลี่ยน
+    if(QOPEN.has(k)){QOPEN.delete(k);tr.classList.remove('open');if(nx&&nx.classList.contains('qd'))nx.remove()}
+    else{QOPEN.add(k);tr.classList.add('open');tr.insertAdjacentHTML('afterend',det(byK.get(k)));bindFk(tr.nextElementSibling)}
+    pin()});
+  list.querySelectorAll('tr.qp input').forEach(c=>c.onchange=()=>{c.checked?QSEL.add(c.dataset.k):QSEL.delete(c.dataset.k);syncSel()});
+  const all=$('qAll');if(all){syncSel();all.onchange=()=>{QSEL=all.checked?new Set(L.map(g=>g.k)):new Set();list.querySelectorAll('tr.qp input').forEach(c=>c.checked=all.checked);syncSel()}}
+  bindFk(list);
   $('qXl').onclick=()=>{const G=QSEL.size?L.filter(g=>QSEL.has(g.k)):L;
     downloadBook([{name:'สรุปขอเบิก',headers:['ลำดับ','อะไหล่','จำนวน (รายการ)','ปิดใช้งาน','ระดับ 2–3','ระดับ 1','ค้างนานสุด (วัน)','เลข DM'],rows:G.map((g,i)=>[i+1,g.name,g.n,g.off,g.l2,g.l1,g.days,g.list.map(e=>e.doc).filter(Boolean).join(', ')])},
       {name:'รายการ DM',headers:['อะไหล่','เลข DM','ตำแหน่ง','พื้นที่','วันที่เสีย','ค้าง (วัน)','ระดับ','แผนการแก้ไข','WORK PERMIT','อาการ'],rows:G.flatMap(g=>g.list.map(e=>[g.name,e.doc,e.code,e.area||'',fmtD(e.d),Math.round((today-dayStart(e.d))/DAY),e.lvTxt,e.plan,e.wp,e.sym]))}],
