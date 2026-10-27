@@ -246,6 +246,13 @@ dl>:nth-last-child(-n+2){border-bottom:0}
 .prange{display:grid;grid-template-columns:1fr 1fr 1.4fr 1.1fr;gap:10px}
 @media (max-width:900px){.prange{grid-template-columns:1fr 1fr}}
 @media (max-width:560px){.prange .field:nth-child(n+3){grid-column:1/-1}}
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:14px}
+@media (max-width:900px){.kpis{grid-template-columns:repeat(3,1fr)}}@media (max-width:560px){.kpis{grid-template-columns:1fr 1fr}}
+.kpi{font:inherit;text-align:left;border:1px solid var(--line);border-radius:14px;padding:10px 12px;background:var(--surface-2);color:var(--fg);cursor:pointer;display:flex;flex-direction:column;gap:2px}
+.kpi b{font-family:var(--f-display);font-size:26px;line-height:1.1}.kpi span{font-size:12px;color:var(--muted)}
+.kpi.red b{color:var(--off-fg)}.kpi.org b{color:var(--l2-fg)}.kpi.yel b{color:var(--l1-fg)}
+.kpi[aria-pressed=true]{outline:2px solid var(--accent);outline-offset:1px;background:var(--surface)}
+.why{display:flex;flex-wrap:wrap;gap:4px}.when.now{color:var(--off-fg);font-weight:700}
 .tbl tr.pick{cursor:pointer}.tbl tr.pick:hover td{background:var(--surface-2)}.tbl tr.sel td{background:color-mix(in srgb,var(--accent) 12%,transparent)}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chips button{font-size:13px;font-weight:500;padding:5px 12px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);color:var(--fg)}
@@ -417,7 +424,7 @@ details ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
     </div>
     <nav class="tabs" id="nav" aria-label="เมนู" hidden>
       <a href="#search" id="t-search"><svg class="ic"><use href="#i-search"/></svg>Search Me!</a>
-      <a href="#plan" id="t-plan"><svg class="ic"><use href="#i-cal"/></svg>วางแผน</a>
+      <a href="#plan" id="t-plan"><svg class="ic"><use href="#i-cal"/></svg>พยากรณ์</a>
       <a href="#admin" id="t-admin"><svg class="ic"><use href="#i-shield"/></svg>Admin</a>
     </nav>
     <div class="ubox" id="ubox" hidden>
@@ -459,11 +466,11 @@ details ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
     </div>
   </section>
 
-  <!-- ===== วางแผน (Supervisor / Admin) ===== -->
+  <!-- ===== พยากรณ์ (Supervisor / Admin) ===== -->
   <section class="view" id="v-plan" hidden>
     <div class="card span2"><div class="panel">
       <span class="kind">Supervisor / Admin</span>
-      <h2>วางแผนเปลี่ยนอะไหล่</h2>
+      <h2>พยากรณ์การซ่อมบำรุง</h2>
       <div class="small" id="pInfo"></div>
       <div class="prange">
         <label class="field"><span>ตั้งแต่</span><input type="date" id="pFrom"></label>
@@ -483,6 +490,7 @@ details ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
       <input type="hidden" id="pBadDays" value="365">
       <div class="status" id="pStatus" role="status"></div>
     </div></div>
+    <div class="card span2" id="pWatch"></div>
     <div class="card span2" id="pForecast"></div>
     <div class="card span2" id="pAreaCmp"></div>
     <div class="card" id="pDue"></div>
@@ -808,7 +816,7 @@ function showMachine(fk,quiet,guessFrom){ // ขั้นที่ 4–5: ดึ
    <div class="seg${pl?' three':''}" role="tablist">
      <button type="button" role="tab" data-t="info" aria-selected="${segTab==='info'}">${pl?'รายละเอียด':'รายละเอียดเครื่องจักร'}</button>
      <button type="button" role="tab" data-t="st" aria-selected="${segTab==='st'}">${pl?'สถานะ DM':'สถานะเครื่องจักร'}<span class="n ${worst}">${open?open+' ค้าง':recs.length}</span></button>
-     ${pl?`<button type="button" role="tab" data-t="plan" aria-selected="${segTab==='plan'}">แผนเปลี่ยน</button>`:''}
+     ${pl?`<button type="button" role="tab" data-t="plan" aria-selected="${segTab==='plan'}">พยากรณ์</button>`:''}
    </div>
    <div data-p="info"${segTab==='info'?'':' hidden'}>${dets.length?(dets[0].alias?`<div class="nodata">ในไฟล์รายละเอียด (แท็บ ${esc(dets[0].sh.name)}) เขียนว่า “<b>${esc(dets[0].alias)}</b>” ${dets[0].guessed?'ระบบเดาเลข Line จากเครื่องอื่นในกลุ่มเดียวกัน':'ระบบจับคู่กับตำแหน่งเต็มให้แล้ว'}</div>`:''):'<div class="nodata">ยังไม่มีรายละเอียดสเปกของเครื่องนี้ในระบบ</div>'}${items.length?`<dl>${items.map(([h,v])=>`<dt>${esc(h||'—')}</dt><dd>${esc(v)}</dd>`).join('')}</dl>`:''}</div>
    <div data-p="st"${segTab==='st'?'':' hidden'}>${statusHTML(recs)}</div>
@@ -1236,7 +1244,7 @@ function route(){
   const admin=v==='admin';
   for(const k of ['search','plan','admin']){$('v-'+k).hidden=v!==k;const t=$('t-'+k);if(v===k)t.setAttribute('aria-current','page');else t.removeAttribute('aria-current')}
   if(v==='plan')initPlanView();
-  $('sub').textContent=v==='plan'?'สถิติจากประวัติ DM เพื่อวางแผนเปลี่ยนอะไหล่และสต็อก':admin?'สำหรับผู้ดูแล: นำเข้า แก้ไข และเผยแพร่ข้อมูลให้ทุกคน':'พิมพ์รหัส หรือถ่ายรูปป้ายบนเครื่อง ระบบจะแสดงข้อมูลออกมา';
+  $('sub').textContent=v==='plan'?'คาดการณ์วันซ่อมบำรุงและอะไหล่จากประวัติ DM':admin?'สำหรับผู้ดูแล: นำเข้า แก้ไข และเผยแพร่ข้อมูลให้ทุกคน':'พิมพ์รหัส หรือถ่ายรูปป้ายบนเครื่อง ระบบจะแสดงข้อมูลออกมา';
   $('pubbar').hidden=!(admin&&(dirty+dirtyS+dirtyM)>0);
 }
 window.addEventListener('hashchange',route);
@@ -1629,7 +1637,7 @@ $('pArea').addEventListener('change',()=>setArea($('pArea').value));
 function famSync(){FAMSEL=$('pFam').value?new Set([$('pFam').value]):null}
 $('pFam').addEventListener('change',()=>{famSync();renderPlan()});
 function renderPlan(){
-  if(!ST.sheets.length){for(const id of ['pForecast','pAreaCmp','pDue','pBad'])$(id).innerHTML='';return}
+  if(!ST.sheets.length){for(const id of ['pWatch','pForecast','pAreaCmp','pDue','pBad'])$(id).innerHTML='';return}
   const r=getRange();if(!r){$('pForecast').innerHTML='<div class="empty">เลือกวันที่ “ถึง” ให้อยู่หลังวันที่ “ตั้งแต่”</div>';return}
   const [a,b]=r,fs=FAMSEL,F=forecast(a,b,fs,AREA),P=buildPlan(),hist=!!(P.minD&&a<=P.minD);
   if(hist)$('pForecast').innerHTML=histHTML(F,a,Math.min(b,Date.now()),fs);else{
@@ -1642,6 +1650,7 @@ function renderPlan(){
       <td class="barc"><div class="bar"><i class="rng" style="left:${x.lo/max*100}%;width:${Math.max(.5,(x.hi-x.lo)/max*100)}%"></i><i class="pt" style="left:${x.exp/max*100}%"></i>${F.past&&x.actual!==null?`<i class="act" style="left:${x.actual/max*100}%"></i>`:''}</div></td></tr>`).join('')}
     ${F.rows.length>1?`<tr class="tot"><td>${fs?`รวม ${F.rows.length} ชนิดที่เลือก`:'รวมทุกชนิด'}</td><td><b>${Math.round(tot.exp)}</b></td><td>${Math.round(tot.lo)} – ${Math.round(tot.hi)}</td>${F.past?`<td>${tot.act}</td>`:''}<td></td></tr>`:''}
     </tbody></table></div><div class="pnote"><span class="lg"><i class="pt"></i>ค่าที่คาด</span><span class="lg"><i class="rng"></i>ช่วงที่เป็นไปได้ (80%)</span>${F.past?'<span class="lg"><i class="act"></i>ใช้จริง</span>':''}</div>`;}
+  $('pWatch').innerHTML=watchHTML(a,b,fs,AREA);bindWatch(a,b,fs);
   const dueAll=dueList(a,b,fs);dueCache=AREA?dueAll.filter(x=>x.area===AREA):dueAll;
   $('pAreaCmp').innerHTML=areaHTML(a,b,fs,F,hist,dueAll);
   $('pAreaCmp').querySelectorAll('tr[data-area]').forEach(t=>t.onclick=()=>setArea(t.dataset.area===AREA?'':t.dataset.area));
@@ -1658,6 +1667,60 @@ function renderPlan(){
     rows:dueCache.map(x=>[x.code,x.area,famTitle(x.f),x.spec,x.tb?(x.qty||1):'',fmtD(x.base),fmtD(x.from),fmtD(x.mid),fmtD(x.to),PLAN_LBL[x.cls],x.open?'ใช่':''])},...(specRows.length?[{name:'สรุปขนาดสายพาน',headers:['ขนาด','จำนวนเส้น','ตำแหน่ง','เส้นที่เข้าช่วงแล้ววันนี้','เส้นที่มี DM ค้าง'],rows:specRows.map(x=>[x.spec,x.q,x.n,x.soon,x.open])}]:[])],`plan-${$('pFrom').value}_${$('pTo').value}.xlsx`,'pStatus');
   renderBad();
   $('v-plan').querySelectorAll('[data-fk]').forEach(b=>b.onclick=()=>openMachine(b.dataset.fk));
+}
+/* ---------- น่าเป็นห่วง: เครื่องที่ควรเข้าซ่อมบำรุง/ดูแลก่อน ---------- */
+let WATCHF='',watchCache=[];
+const WATCH_K=[['off','ปิดใช้งานอยู่ (DM ค้าง)','red'],['l2','DM ค้างระดับ 2–3','org'],['rep','เสียซ้ำบ่อย (≥3 ครั้งใน 90 วัน)','org'],['over','เกินรอบปกติแล้ว','yel'],['soon','ถึงรอบในช่วงที่เลือก','yel']];
+const PRIO=x=>x.score>=100?['สูง','off']:x.score>=50?['กลาง','l2']:['เฝ้าดู','l1'];
+function concerns(a,b,fs,area){
+  const P=buildPlan(),now=Date.now(),today=dayStart(now),m=new Map(),ok=e=>(!fs||fs.has(e.fam))&&(!area||e.area===area);
+  const get=e=>{let x=m.get(e.fk);if(!x)m.set(e.fk,x={fk:e.fk,code:e.code,area:e.area,lv:'',crit:[],l1:0,rep:0,over:[],soon:[],next:Infinity});return x};
+  for(const v of P.byM.values())for(const e of v){if(!ok(e))continue;
+    if(e.lv==='off'||e.lv==='l2'){const x=get(e);x.crit.push(e);if(LV_ORDER[e.lv]>LV_ORDER[x.lv])x.lv=e.lv;x.oldest=Math.min(x.oldest||9e15,e.d)}
+    else if(e.lv==='l1')get(e).l1++;
+    if(e.d>=now-90*DAY)get(e).rep++}
+  for(const v of P.byKey.values()){const last=v[v.length-1];if(!ok(last))continue;const st=P.FS.get(last.fam);if(!st)continue;
+    const base=last.done||last.d,age=(now-base)/DAY;if(age>=st.p75*2)continue; // ไม่เสียซ้ำมานานเกิน 2 เท่าของรอบปกติ = ปกติดี
+    const x=get(last),due=base+st.p50*DAY;
+    if(age>=st.p75)x.over.push({f:last.fam,d:Math.round(age-st.p75)});
+    else if(age>=st.p50)x.soon.push({f:last.fam,to:base+st.p75*DAY});
+    x.next=Math.min(x.next,age>=st.p50?today:due)}
+  const out=[];
+  for(const x of m.values()){
+    x.isRep=x.rep>=3;if(x.lv||x.isRep||x.over.length)x.next=Math.min(x.next,today);
+    x.inRange=x.next>=a&&x.next<=b;
+    if(!x.lv&&!x.isRep&&!x.over.length&&!x.inRange)continue;
+    x.score=(x.lv==='off'?100:x.lv==='l2'?50:0)+(x.isRep?50+10*(x.rep-3):0)+(x.over.length?20+5*(x.over.length-1):0)+x.soon.length*8+Math.min(x.l1,3)*2;
+    x.over.sort((p,q)=>q.d-p.d);out.push(x)}
+  return out.sort((p,q)=>q.score-p.score||p.next-q.next);
+}
+function watchHTML(a,b,fs,area){
+  const L=concerns(a,b,fs,area),today=dayStart(Date.now());
+  const has={off:x=>x.lv==='off',l2:x=>x.lv==='l2',rep:x=>x.isRep,over:x=>x.over.length>0,soon:x=>x.inRange&&!x.lv&&!x.isRep&&!x.over.length};
+  if(WATCHF&&!has[WATCHF])WATCHF='';
+  watchCache=WATCHF?L.filter(has[WATCHF]):L;
+  const age=x=>x.oldest?` · ค้าง ${Math.round((today-dayStart(x.oldest))/DAY).toLocaleString()} วัน`:'';
+  const why=x=>[x.lv==='off'?`<span class="st off">ปิดใช้งาน${age(x)}</span>`:x.lv==='l2'?`<span class="st l2">DM ค้างระดับ 2–3${x.crit.length>1?' ×'+x.crit.length:''}${age(x)}</span>`:'',
+    x.isRep?`<span class="st l2">เสียซ้ำ ${x.rep} ครั้ง/90 วัน</span>`:'',
+    ...x.over.slice(0,2).map(o=>`<span class="st l1">เกินรอบ ${esc(famTitle(o.f))} ${o.d} วัน</span>`),x.over.length>2?`<span class="st l1">+${x.over.length-2} ชนิด</span>`:'',
+    ...x.soon.slice(0,2).map(o=>`<span class="st l1">ใกล้รอบ ${esc(famTitle(o.f))}</span>`),
+    x.l1?`<span class="st ok">เฝ้าระวัง ${x.l1}</span>`:''].filter(Boolean).join('');
+  const when=x=>x.next<=today?(x.lv||x.isRep?'<span class="when now">ทันที</span>':'<b>ตรวจโดยเร็ว</b>'):`${fmtD(x.next)} <span class="small">(อีก ${Math.round((x.next-today)/DAY)} วัน)</span>`;
+  return `<div class="panel"><span class="kind">น่าเป็นห่วง</span><h2>เครื่องที่ควรเข้าซ่อมบำรุง/ดูแลก่อน${area?` <span class="chip">${esc(area)}</span>`:''}${fs&&fs.size===1?` <span class="chip">${esc(famTitle([...fs][0]))}</span>`:''}</h2>
+    <div class="small">สถานะ ณ ${fmtD(today)} รวมกับเครื่องที่ถึงรอบซ่อมบำรุงในช่วง ${fmtD(a)} – ${fmtD(b)} · เรียงตามความเร่งด่วน: ปิดใช้งาน > เสียซ้ำบ่อย / DM ระดับ 2–3 > เกินรอบปกติ · “รอบปกติ” คำนวณจากอายุจริงของอะไหล่ชนิดเดียวกันทั้งโรงงาน · แตะการ์ดเพื่อกรอง แตะชื่อเครื่องเพื่อดูประวัติ</div>
+    <div class="kpis">${WATCH_K.map(([k,t,c])=>`<button type="button" class="kpi ${c}" data-w="${k}" aria-pressed="${WATCHF===k}"><b>${L.filter(has[k]).length.toLocaleString()}</b><span>${t}</span></button>`).join('')}</div>
+    <div class="btns"><button class="ghost sm" type="button" id="pWatchXl">ดาวน์โหลดเป็น Excel</button>${WATCHF?' <button class="ghost sm" type="button" id="pWatchAll">ดูทั้งหมด</button>':''}</div></div>
+    ${watchCache.length?`<div class="tbl scroll" style="max-height:520px"><table><thead><tr><th>#</th><th>ความเร่งด่วน</th><th>เครื่องจักร</th><th>พื้นที่</th><th>เหตุที่น่าเป็นห่วง</th><th>ควรเข้าดูแล</th></tr></thead><tbody>
+    ${watchCache.slice(0,200).map((x,i)=>{const[pt,pc]=PRIO(x);return `<tr><td>${i+1}</td><td><span class="st ${pc}">${pt}</span></td><td><button class="lnk" type="button" data-fk="${esc(x.fk)}">${esc(x.code)}</button></td><td>${esc(x.area||'')}</td><td><div class="why">${why(x)}</div></td><td>${when(x)}</td></tr>`}).join('')}
+    </tbody></table></div>${watchCache.length>200?`<div class="pnote">แสดง 200 จาก ${watchCache.length.toLocaleString()} เครื่อง ดาวน์โหลด Excel เพื่อดูทั้งหมด</div>`:''}`:'<div class="empty">ไม่มีเครื่องที่น่าเป็นห่วงในเงื่อนไขนี้</div>'}`;
+}
+function bindWatch(a,b,fs){
+  $('pWatch').querySelectorAll('.kpi').forEach(k=>k.onclick=()=>{WATCHF=WATCHF===k.dataset.w?'':k.dataset.w;$('pWatch').innerHTML=watchHTML(a,b,fs,AREA);bindWatch(a,b,fs)});
+  const all=$('pWatchAll');if(all)all.onclick=()=>{WATCHF='';$('pWatch').innerHTML=watchHTML(a,b,fs,AREA);bindWatch(a,b,fs)};
+  $('pWatch').querySelectorAll('[data-fk]').forEach(x=>x.onclick=()=>openMachine(x.dataset.fk));
+  const today=dayStart(Date.now());
+  $('pWatchXl').onclick=()=>downloadBook([{name:'น่าเป็นห่วง',headers:['เครื่องจักร','พื้นที่','ความเร่งด่วน','คะแนน','ควรเข้าดูแล','DM ค้างนานสุด (วัน)','สถานะ DM ค้าง','จำนวน DM ระดับ 2–3/ปิดใช้งาน','อะไหล่ที่เกินรอบปกติ','อะไหล่ที่ใกล้รอบ','DM ใน 90 วัน','เฝ้าระวังระดับ 1'],
+    rows:watchCache.map(x=>[x.code,x.area||'',PRIO(x)[0],x.score,x.next<=today?(x.lv||x.isRep?'ทันที':'ตรวจโดยเร็ว'):fmtD(x.next),x.oldest?Math.round((today-dayStart(x.oldest))/DAY):'',x.lv==='off'?'ปิดใช้งาน':x.lv==='l2'?'ระดับ 2–3':'',x.crit.length||'',x.over.map(o=>`${famTitle(o.f)} (เกิน ${o.d} วัน)`).join(', '),x.soon.map(o=>famTitle(o.f)).join(', '),x.rep||'',x.l1||''])}],`watch-${isoD(today)}.xlsx`,'pStatus');
 }
 let areaCache=[];
 const AREA_COLS=(F,hist)=>['พื้นที่','จำนวนเครื่อง',hist||(F.past&&!F.partial)?'ใช้จริง (ครั้ง)':'คาดว่าจะใช้ (ชิ้น)','ต่อ 100 เครื่อง','เครื่องที่ถึงรอบในช่วงนี้','เครื่องที่มี DM ค้าง'];
