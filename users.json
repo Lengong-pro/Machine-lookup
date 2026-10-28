@@ -92,6 +92,22 @@
    },
    "at": "2026-10-19T14:17:15.722Z",
    "by": "Lengong-pro"
+  },
+  "iFkX58FRAHn97q0LaFpUg16qP/Zbc2yqpyl0n+4Ng6Y=": {
+   "salt": "4O5AcHj5NhS0QOT3H9QUxQ==",
+   "iter": 600000,
+   "iv": "HyJsbnIRCu33q+if",
+   "ct": "ZlK/SZs0tTPFvhm7EnVvN5Xd+yr0ZzwsnwAxb3YYoga88xxv9xm953GTuUy8Mk2M",
+   "n": {
+    "iv": "sqxTgnl3LWUSh0O6",
+    "ct": "5jEAipw2HRs+FbjojTXuxqTuAY+nfJmpMFQ="
+   },
+   "r": {
+    "iv": "iII1a/03qczR1lix",
+    "ct": "/t43WMENRRTv1Ec/A1wJI3blqSjYIX0OHWk="
+   },
+   "at": "2026-10-28T02:55:53.999Z",
+   "by": "Navathat.p"
   }
  },
  "sys": {
