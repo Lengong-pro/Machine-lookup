@@ -386,6 +386,7 @@ details ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
 .mbody.qm{overflow:auto;min-height:0;padding:14px 16px 18px}.mbody.qm .tbl{margin:0}.mbody.qm thead th{position:sticky;top:-14px;z-index:1}
 .qmsel{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px}.qmsel input{width:17px;height:17px;accent-color:var(--accent);margin:0}
 @media (max-width:560px){.modal:has(.mcard.wide){padding:8px}.mcard.wide{max-height:calc(100dvh - 16px);border-radius:16px}}
+.tokwarn{margin-top:10px;padding:10px 12px;border-radius:12px;font-weight:600;font-size:14px;line-height:1.5}.tokwarn.bad{background:var(--off-bg);color:var(--off-fg)}.tokwarn.warn{background:var(--l1-bg);color:var(--l1-fg)}
 .upd{position:fixed;left:50%;transform:translateX(-50%);top:78px;z-index:80;background:var(--surface);color:var(--fg);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:14px;padding:10px 12px 10px 16px;display:flex;align-items:center;gap:12px;font-weight:600;max-width:calc(100vw - 24px)}
 </style>
 </head>
@@ -551,6 +552,7 @@ details ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
           <ol>
             <li>เปิด github.com/settings/personal-access-tokens/new</li>
             <li>Repository access เลือก Only select repositories แล้วเลือก repo นี้</li>
+            <li>Expiration เลือกนานที่สุดที่ทำได้ (Custom → 1 ปี) ถ้า token หมดอายุ จะอัปโหลดข้อมูลไม่ได้</li>
             <li>Permissions → Contents ตั้งเป็น Read and write แล้วกด Generate token</li>
             <li>คัดลอก token มาวางด้านบน</li>
           </ol>
@@ -562,6 +564,7 @@ details ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
       <div class="card span2"><div class="panel">
         <div class="whobar"><span class="lock" id="a-role">🔒 ผู้ดูแล</span><span>เข้าสู่ระบบเป็น <b id="a-who"></b></span><button class="ghost sm" type="button" id="logout">ตัดการเชื่อมต่อ GitHub</button></div>
         <div class="small" id="a-info"></div>
+        <div class="tokwarn" id="a-tok" hidden role="alert"></div>
       </div></div>
 
       <div class="card span2" id="u-card"><div class="panel">
@@ -769,6 +772,10 @@ const LV_ORDER={off:3,l2:2,l1:1,ok:0,'':0};
 function stClass(v){v=String(v||'').trim(); // ระดับความเสียหาย → สี
   if(!v)return '';if(/ปิดใช้งาน|disable/i.test(v))return 'off';if(/ปิด\s*DM|close|เสร็จ|done|complete/i.test(v))return 'ok';
   if(/ระดับ\s*1|level\s*1/i.test(v))return 'l1';if(/ระดับ\s*[23]|level\s*[23]/i.test(v))return 'l2';return 'l1'}
+// ลำดับความรุนแรงของระดับใน DM: ปิดใช้งาน > ระดับ 3 > ระดับ 2 > ระดับ 1 > ปิด DM
+function dmRank(t){t=String(t||'').trim();if(!t)return -1;if(/ปิดใช้งาน|disable/i.test(t))return 4;if(/ระดับ\s*3|level\s*3/i.test(t))return 3;
+  if(/ระดับ\s*2|level\s*2/i.test(t))return 2;if(/ปิด\s*DM|close|เสร็จ|done|complete/i.test(t))return 0;return 1}
+const isStatusH=h=>/^(สถานะ\s*เครื่องจักร|machine\s*status|status)$/i.test(String(h||'').trim());
 const HIDE_COLS=/^(no\.?|แผนการแก้ไข|รายละเอียด|machine type|สาเหตุการชำรุด)$/i; // คอลัมน์ที่ไม่แสดงในหน้าสถานะ
 let LINKED={n:0,guess:0,none:0};
 function linkShortCodes(){ // แท็บ Belt-SAT / Belt-MTB เขียนรหัสย่อ เช่น EBS012-01, LF010-01 → จับคู่กับตำแหน่งเต็ม LP281-EBS012-01
@@ -853,7 +860,12 @@ function showMachine(fk,quiet,guessFrom){ // ขั้นที่ 4–5: ดึ
   const m=MIDX.get(fk),dets=DIDX.get(fk)||[],recs=SIDX.get(fk)||[],code=(m&&m.code)||(dets[0]&&dets[0].code)||fk;
   const items=[],seen=new Set();
   const add=(h,v)=>{h=String(h||'').trim();v=String(v??'').trim();if(!v||v==='-'||seen.has(h.toLowerCase()))return;seen.add(h.toLowerCase());items.push([h,v])};
-  if(m)m.sh.headers.forEach((h,i)=>{if(i!==m.ci)add(h,m.r[i])});
+  // สถานะเครื่องจักร: ใช้ระดับที่หนักที่สุดจาก DM ของตำแหน่งนี้ ถ้ามีแต่ ปิด DM → “ปกติ” (ไม่มี DM เลย → ใช้ค่าจากรายชื่อเครื่องจักร)
+  let dmLv=null;
+  if(recs.length){let best=-1,txt='';for(const x of recs){const t=x.sh._c.si>=0?String(x.r[x.sh._c.si]||'').trim():'';const r=dmRank(t);if(r>best){best=r;txt=t}}
+    if(best>=0)dmLv=best===0?{txt:'ปกติ',cls:''}:{txt,cls:stClass(txt)}}
+  if(m)m.sh.headers.forEach((h,i)=>{if(i===m.ci)return;if(dmLv&&isStatusH(h)){add(h,dmLv.txt);return}add(h,m.r[i])});
+  if(dmLv){let i=items.findIndex(([h])=>isStatusH(h));if(i<0){items.splice(Math.min(1,items.length),0,['สถานะเครื่องจักร',dmLv.txt]);seen.add('สถานะเครื่องจักร');i=Math.min(1,items.length-1)}items[i][2]='dm'}
   for(const e of dets)e.sh.headers.forEach((h,i)=>{if(i!==e.ci)add(h,e.r[i])});
   let open=0,worst='';
   for(const x of recs){const k=x.sh._c.si>=0?stClass(x.r[x.sh._c.si]):'';if(k&&k!=='ok'){open++;if(LV_ORDER[k]>LV_ORDER[worst])worst=k}}
@@ -866,7 +878,7 @@ function showMachine(fk,quiet,guessFrom){ // ขั้นที่ 4–5: ดึ
      <button type="button" role="tab" data-t="st" aria-selected="${segTab==='st'}">${pl?'สถานะ DM':'สถานะเครื่องจักร'}<span class="n ${worst}">${open?open+' ค้าง':recs.length}</span></button>
      ${pl?`<button type="button" role="tab" data-t="plan" aria-selected="${segTab==='plan'}">พยากรณ์</button>`:''}
    </div>
-   <div data-p="info"${segTab==='info'?'':' hidden'}>${dets.length?(dets[0].alias?`<div class="nodata">ในไฟล์รายละเอียด (แท็บ ${esc(dets[0].sh.name)}) เขียนว่า “<b>${esc(dets[0].alias)}</b>” ${dets[0].guessed?'ระบบเดาเลข Line จากเครื่องอื่นในกลุ่มเดียวกัน':'ระบบจับคู่กับตำแหน่งเต็มให้แล้ว'}</div>`:''):'<div class="nodata">ยังไม่มีรายละเอียดสเปกของเครื่องนี้ในระบบ</div>'}${items.length?`<dl>${items.map(([h,v])=>`<dt>${esc(h||'—')}</dt><dd>${esc(v)}</dd>`).join('')}</dl>`:''}</div>
+   <div data-p="info"${segTab==='info'?'':' hidden'}>${dets.length?(dets[0].alias?`<div class="nodata">ในไฟล์รายละเอียด (แท็บ ${esc(dets[0].sh.name)}) เขียนว่า “<b>${esc(dets[0].alias)}</b>” ${dets[0].guessed?'ระบบเดาเลข Line จากเครื่องอื่นในกลุ่มเดียวกัน':'ระบบจับคู่กับตำแหน่งเต็มให้แล้ว'}</div>`:''):'<div class="nodata">ยังไม่มีรายละเอียดสเปกของเครื่องนี้ในระบบ</div>'}${items.length?`<dl>${items.map(([h,v,f])=>`<dt>${esc(h||'—')}</dt><dd>${f==='dm'?(dmLv.cls?`<span class="st ${dmLv.cls}">${esc(v)}</span>`:`<b>${esc(v)}</b>`)+' <span class="small">· ตามรายการ DM</span>':esc(v)}</dd>`).join('')}</dl>`:''}</div>
    <div data-p="st"${segTab==='st'?'':' hidden'}>${statusHTML(recs)}</div>
    ${pl?`<div data-p="plan"${segTab==='plan'?'':' hidden'}>${planHTML(fk)}</div>`:''}</article>`;
   bindTimeline($('out'));
@@ -1307,8 +1319,29 @@ function guessRepo(){
 async function gh(path,opt={}){
   const r=await fetch('https://api.github.com'+path,{cache:'no-store',...opt,headers:{Authorization:'Bearer '+GH.token,Accept:'application/vnd.github+json','Content-Type':'application/json',...(opt.headers||{})}});
   const j=await r.json().catch(()=>({}));
-  if(!r.ok){const e=new Error(j.message||('HTTP '+r.status));e.status=r.status;throw e}
+  const ex=r.headers.get('github-authentication-token-expiration');if(ex)GH_EXP=ex;
+  if(!r.ok){const e=new Error(j.message||('HTTP '+r.status));e.status=r.status;e.rl=r.headers.get('x-ratelimit-remaining')==='0'?+r.headers.get('x-ratelimit-reset'):0;throw e}
   return j;
+}
+let GH_EXP='';
+// แปลง error จาก GitHub เป็นข้อความที่บอกวิธีแก้
+function ghErr(e){
+  if(typeof e==='string')return e;
+  if(e instanceof TypeError||/Failed to fetch|NetworkError|Load failed/i.test(e.message||''))return 'เชื่อมต่อ GitHub ไม่ได้ ตรวจอินเทอร์เน็ตแล้วลองอีกครั้ง';
+  if(e.status===401)return 'token ระบบหมดอายุหรือถูกยกเลิก — Admin ต้องสร้าง token ใหม่บน GitHub แล้วบันทึกในหัวข้อ “token ระบบ” ด้านล่าง';
+  if(e.rl||/rate limit/i.test(e.message||'')){const m=e.rl?Math.max(1,Math.ceil((e.rl*1000-Date.now())/60000)):60;return `GitHub จำกัดจำนวนครั้งชั่วคราว รอประมาณ ${m} นาทีแล้วลองใหม่`}
+  if(e.status===403||e.status===404)return 'token นี้ไม่มีสิทธิ์เขียน repo ตรวจว่าตั้ง Contents เป็น Read and write และเลือก repo นี้ไว้';
+  if(e.status===409||e.status===422&&/sha/i.test(e.message||''))return 'ไฟล์เพิ่งถูกแก้จากที่อื่นพร้อมกัน โหลดหน้าใหม่แล้วลองอีกครั้ง';
+  if(e.status===413||/too large/i.test(e.message||''))return 'ไฟล์ใหญ่เกินกว่าที่ GitHub รับได้ แจ้งผู้พัฒนาเพื่อแบ่งไฟล์';
+  return 'เผยแพร่ไม่สำเร็จ: '+(e.message||e);
+}
+// ตรวจ token ตอนเข้าหน้า Admin: หมดอายุแล้ว / ใกล้หมดอายุ
+async function checkToken(){
+  const box=$('a-tok');if(!box||!GH)return;box.hidden=true;
+  try{await gh('/repos/'+GH.repo);
+    if(GH_EXP){const d=new Date(GH_EXP.replace(' UTC','Z').replace(' ','T')),left=Math.ceil((d-Date.now())/86400000);
+      if(!isNaN(left)&&left<=14){box.className='tokwarn warn';box.textContent=`token ${GH.sys?'ระบบ':''}จะหมดอายุ ${d.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'})} (อีก ${left} วัน) — ${isAdmin()?'สร้าง token ใหม่แล้วบันทึกในหัวข้อ “token ระบบ” ก่อนวันนั้น':'แจ้ง Admin ให้ตั้ง token ใหม่'}`;box.hidden=false}}
+  }catch(e){box.className='tokwarn bad';box.textContent=e.status===401?(isAdmin()?'⚠ token ระบบหมดอายุหรือถูกยกเลิกแล้ว — อัปโหลดข้อมูลไม่ได้จนกว่าจะสร้าง token ใหม่บน GitHub แล้วบันทึกในหัวข้อ “token ระบบ” ด้านล่าง':'⚠ token ระบบหมดอายุแล้ว อัปโหลดข้อมูลไม่ได้ — แจ้ง Admin ให้ตั้ง token ใหม่'):'⚠ '+ghErr(e);box.hidden=false}
 }
 function b64(str){const b=new TextEncoder().encode(str);let s='';for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(s)}
 
@@ -1339,7 +1372,7 @@ function enterAdmin(){
   $('a-login').hidden=true;$('a-main').hidden=false;
   $('a-who').textContent=USERS?ME:GH.login;$('logout').hidden=!!GH.sys;
   draft=clone(DB);delete draft.sample;dirty=0;sel=null;draftS=clone({sheets:ST.sheets.map(s=>({name:s.name,headers:s.headers,rows:s.rows})),source:ST.source});dirtyS=0;draftM=plainCopy(MC);dirtyM=0;
-  renderAdmin();applyAccess();
+  renderAdmin();applyAccess();checkToken();
 }
 function renderAdmin(){
   renderUsers();
@@ -1445,14 +1478,18 @@ $('publish').onclick=async()=>{
     else await ghPut(path,JSON.stringify(out),msg);
     return out;
   };
+  let at='a-xstatus';
   try{
+    at='a-mstatus';
     if(dirtyM){MC=await put('machines.json',draftM,'อัปเดตรายชื่อเครื่องจักรทั้งหมด');if(!USERS)ls.set(MKEY,JSON.stringify(MC));dirtyM=0;say('a-mstatus','เผยแพร่รายชื่อเครื่องจักรแล้ว ทุกคนจะเห็นภายใน 1–2 นาที','good')}
+    at='a-xstatus';
     if(dirty){DB=await put('data.json',draft,'อัปเดตรายละเอียดเครื่องจักร');if(!USERS)ls.set(CKEY,JSON.stringify(DB));dirty=0;say('a-xstatus','เผยแพร่รายละเอียดแล้ว ทุกคนจะเห็นภายใน 1–2 นาที','good')}
+    at='a-sstatus';
     if(dirtyS){ST=await put('status.json',draftS,'อัปเดตสถานะเครื่องจักร (DM)');if(!USERS)ls.set(SKEY,JSON.stringify(ST));dirtyS=0;say('a-sstatus','เผยแพร่สถานะแล้ว ทุกคนจะเห็นภายใน 1–2 นาที','good')}
     buildIndex();draft=clone(DB);delete draft.sample;draftS={sheets:ST.sheets.map(s=>({name:s.name,headers:s.headers,rows:s.rows})),source:ST.source};draftM=plainCopy(MC);renderAdmin();
   }catch(e){renderAdmin();
-    say('a-xstatus',e.status===409?'มีคนอื่นเพิ่งเผยแพร่ก่อนหน้า โหลดหน้าใหม่แล้วแก้อีกครั้ง':e.status===403||e.status===404?'token นี้ไม่มีสิทธิ์เขียน ตรวจว่าตั้ง Contents เป็น Read and write':'เผยแพร่ไม่สำเร็จ: '+e.message,'err');
-    $('v-admin').scrollIntoView({behavior:'smooth'});
+    say(at,ghErr(e),'err');if(e.status===401)checkToken();
+    ($(at).closest('.card')||$('v-admin')).scrollIntoView({behavior:'smooth',block:'center'});
   }finally{b.disabled=false;b.textContent='เผยแพร่ให้ทุกคน'}
 };
 
@@ -1472,7 +1509,7 @@ function famOf(sym,part){ // จัดกลุ่มอะไหล่จาก
   return t.length>=3?t:'';
 }
 let PLAN=null;
-const APP_VER=33; // เพิ่มทุกครั้งที่อัปโหลด index.html ใหม่ ระบบจะเตือนเครื่องที่ยังเปิดเวอร์ชันเก่าค้างไว้
+const APP_VER=35; // เพิ่มทุกครั้งที่อัปโหลด index.html ใหม่ ระบบจะเตือนเครื่องที่ยังเปิดเวอร์ชันเก่าค้างไว้
 function checkUpdate(){
   if(!/github\.io$/i.test(location.hostname))return;
   fetch(location.pathname+'?_='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'').then(t=>{const m=t.match(/const APP_VER=(\d+)/);
