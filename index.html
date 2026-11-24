@@ -190,6 +190,14 @@ button:focus-visible,.btn:focus-visible,input:focus-visible,select:focus-visible
 .cam{background:rgba(255,255,255,.14);color:var(--frame-ink);border-color:rgba(255,255,255,.35);border-radius:12px}
 .cam:hover{background:rgba(255,255,255,.22)}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.row2:has(#scrBtn:not([hidden])){grid-template-columns:repeat(3,1fr)}
+#scrBtn.on{box-shadow:inset 0 0 0 2px var(--accent)}
+.snap{position:fixed;inset:0;z-index:70;background:#000;cursor:crosshair;user-select:none;-webkit-user-select:none;touch-action:none}
+.snap canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.snap .dim{position:absolute;inset:0;background:rgba(0,0,0,.55);pointer-events:none}
+.snap .sel{position:absolute;border:2px solid #fff;outline:1px dashed rgba(0,0,0,.6);box-shadow:0 0 0 9999px rgba(0,0,0,.55);pointer-events:none}
+.snap .tip{position:absolute;left:50%;top:16px;transform:translateX(-50%);background:rgba(20,24,40,.92);color:#fff;padding:9px 16px;border-radius:12px;font-weight:600;font-size:14px;pointer-events:none;white-space:nowrap;max-width:calc(100vw - 24px);overflow:hidden;text-overflow:ellipsis}
+.snap .sx{position:absolute;right:14px;top:12px;width:40px;height:40px;border-radius:12px;border:0;background:rgba(255,255,255,.15);color:#fff;font-size:22px;cursor:pointer}
 .hint{flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;min-height:420px;border:2px dashed color-mix(in srgb,var(--navy) 22%,transparent);border-radius:22px;padding:30px;color:var(--muted);background:color-mix(in srgb,var(--surface) 55%,transparent)}
 .hint img{width:180px;border-radius:24px;background:var(--cream);box-shadow:var(--shadow)}
 .hint b{font-family:var(--f-display);font-size:24px;letter-spacing:.03em;color:var(--fg)}
@@ -401,6 +409,7 @@ details ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
   <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></symbol>
   <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></symbol>
   <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></symbol>
+  <symbol id="i-snap" viewBox="0 0 24 24"><path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4"/><rect x="8" y="9" width="8" height="6" rx="1"/></symbol>
   <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></symbol>
   <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3"/></symbol>
   <symbol id="i-logout" viewBox="0 0 24 24"><path d="M15 4h4v16h-4"/><path d="M10 8l-4 4 4 4M6 12h11"/></symbol>
@@ -470,6 +479,7 @@ details ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
         <div class="row2">
           <button class="btn cam" type="button" id="camBtn"><svg class="ic"><use href="#i-camera"/></svg>ถ่ายรูปป้าย</button>
           <label class="btn cam" for="photo"><svg class="ic"><use href="#i-image"/></svg>เลือกจากคลังรูป</label>
+          <button class="btn cam" type="button" id="scrBtn" hidden title="จับภาพจากหน้าจอแล้วลากกรอบรอบรหัสตำแหน่ง (Supervisor ขึ้นไป)"><svg class="ic"><use href="#i-snap"/></svg>แคปหน้าจอ</button>
         </div>
         <input id="photo" type="file" accept="image/*" hidden>
         <input id="photoCap" type="file" accept="image/*" capture="environment" hidden>
@@ -676,6 +686,8 @@ details ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;g
   </form>
 </div>
 
+<div class="snap" id="snap" hidden role="dialog" aria-label="ลากกรอบรอบรหัสตำแหน่ง"><canvas id="snapC"></canvas><div class="dim" id="snapDim"></div><div class="sel" id="snapSel" hidden></div><div class="tip" id="snapTip">ลากกรอบรอบรหัสตำแหน่งที่ต้องการ · กด Esc เพื่อยกเลิก</div><button type="button" class="sx" id="snapX" aria-label="ยกเลิก">✕</button></div>
+<video id="scrVid" muted playsinline hidden></video>
 <div class="camview" id="camview" hidden role="dialog" aria-label="กล้องถ่ายป้าย">
   <video id="camvid" playsinline muted autoplay></video>
   <div class="camguide"><div class="camframe"></div><p>เล็งป้ายรหัสให้อยู่ในกรอบ แล้วกดถ่าย</p></div>
@@ -1297,10 +1309,66 @@ $('camClose').onclick=stopCam;
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&camStream)stopCam()});
 window.addEventListener('hashchange',()=>{if(camStream)stopCam()});
 
+/* ---------- แคปหน้าจอ (Supervisor ขึ้นไป, คอมพิวเตอร์): แชร์หน้าจอครั้งเดียว → ลากกรอบ → อ่านรหัสทันที ---------- */
+let scrStream=null,scrSurface='';
+const canSnap=()=>canPlan()&&!!(navigator.mediaDevices&&navigator.mediaDevices.getDisplayMedia);
+async function grabFrame(){
+  const v=$('scrVid');if(v.srcObject!==scrStream){v.srcObject=scrStream;await v.play().catch(()=>{})}
+  for(let i=0;i<40&&!v.videoWidth;i++)await new Promise(r=>setTimeout(r,50));
+  if(!v.videoWidth)throw new Error('ยังไม่ได้ภาพจากหน้าจอ');
+  await new Promise(r=>v.requestVideoFrameCallback?v.requestVideoFrameCallback(()=>r()):setTimeout(r,120)); // รอเฟรมล่าสุด
+  const c=$('snapC');c.width=v.videoWidth;c.height=v.videoHeight;c.getContext('2d').drawImage(v,0,0);return c;
+}
+async function startSnap(){
+  if(ocrBusy){say('status','กำลังอ่านรูปก่อนหน้าอยู่ รอสักครู่');return}
+  const live=scrStream&&scrStream.getVideoTracks().some(t=>t.readyState==='live');
+  if(!live){
+    try{scrStream=await navigator.mediaDevices.getDisplayMedia({video:{frameRate:5,cursor:'never'},audio:false,selfBrowserSurface:'exclude',surfaceSwitching:'include'})}
+    catch(e){say('status',e&&e.name==='NotAllowedError'?'ยกเลิกการแชร์หน้าจอ — กดปุ่มอีกครั้งแล้วเลือกหน้าต่างของโปรแกรมที่มีรหัสตำแหน่ง':'เปิดการแชร์หน้าจอไม่ได้: '+(e&&e.message||e),'err');return}
+    const t=scrStream.getVideoTracks()[0];scrSurface=(t.getSettings&&t.getSettings().displaySurface)||'';
+    t.addEventListener('ended',()=>{scrStream=null;$('scrBtn').classList.remove('on')});$('scrBtn').classList.add('on');
+    if(!paddle)loadPaddle().catch(()=>{}); // โหลดตัวอ่าน AI ระหว่างรอ
+    if(scrSurface==='monitor'){ // แชร์ทั้งจอ: ต้องรอให้ผู้ใช้สลับไปหน้าจอที่มีรหัสก่อน แล้วค่อยจับภาพ
+      say('status','📷 สลับไปที่หน้าจอที่มีรหัสตำแหน่ง ระบบจะจับภาพให้ใน 3 วินาที แล้วกลับมาที่หน้านี้เพื่อลากกรอบ');
+      await new Promise(r=>{let done=false;const go=()=>{if(!done){done=true;window.removeEventListener('blur',onB);setTimeout(r,700)}},onB=()=>go();window.addEventListener('blur',onB);setTimeout(go,3000)});
+    }
+  }
+  let c;try{c=await grabFrame()}catch(e){say('status','จับภาพหน้าจอไม่สำเร็จ ลองกดอีกครั้ง','err');return}
+  openSnap();
+}
+let sp=null;
+function openSnap(){$('snap').hidden=false;$('snapSel').hidden=true;$('snapDim').hidden=false;document.body.style.overflow='hidden';$('snapX').focus({preventScroll:true});say('status','')}
+function closeSnap(){$('snap').hidden=true;sp=null;document.body.style.overflow=''}
+function snapRect(){ // พื้นที่ที่ภาพแสดงจริงบนจอ (object-fit: contain)
+  const c=$('snapC'),r=c.getBoundingClientRect(),k=Math.min(r.width/c.width,r.height/c.height),w=c.width*k,h=c.height*k;
+  return {x:r.left+(r.width-w)/2,y:r.top+(r.height-h)/2,w,h,k};
+}
+$('snap').addEventListener('pointerdown',e=>{if(e.target===$('snapX')||e.button!==0)return;const R0=snapRect();
+  sp={x0:Math.min(Math.max(e.clientX,R0.x),R0.x+R0.w),y0:Math.min(Math.max(e.clientY,R0.y),R0.y+R0.h),R0};$('snap').setPointerCapture(e.pointerId);drawSel(e)});
+$('snap').addEventListener('pointermove',e=>{if(sp)drawSel(e)});
+function drawSel(e){const R0=sp.R0,x=Math.min(Math.max(e.clientX,R0.x),R0.x+R0.w),y=Math.min(Math.max(e.clientY,R0.y),R0.y+R0.h);
+  sp.x1=x;sp.y1=y;const s=$('snapSel').style;s.left=Math.min(sp.x0,x)+'px';s.top=Math.min(sp.y0,y)+'px';s.width=Math.abs(x-sp.x0)+'px';s.height=Math.abs(y-sp.y0)+'px';
+  $('snapSel').hidden=false;$('snapDim').hidden=true}
+$('snap').addEventListener('pointerup',()=>{if(!sp)return;const {R0,x0,y0,x1=x0,y1=y0}=sp;sp=null;
+  const w=Math.abs(x1-x0),h=Math.abs(y1-y0);if(w<8||h<6){$('snapSel').hidden=true;$('snapDim').hidden=false;return}
+  const c=$('snapC'),sx=(Math.min(x0,x1)-R0.x)/R0.k,sy=(Math.min(y0,y1)-R0.y)/R0.k,sw=w/R0.k,sh=h/R0.k;
+  const up=Math.min(4,Math.max(1,96/sh)),o=document.createElement('canvas');o.width=Math.round(sw*up);o.height=Math.round(sh*up); // ตัวหนังสือบนจอเล็ก → ขยายก่อนอ่าน
+  const g=o.getContext('2d');g.imageSmoothingQuality='high';g.fillStyle='#fff';g.fillRect(0,0,o.width,o.height);g.drawImage(c,sx,sy,sw,sh,0,0,o.width,o.height);
+  closeSnap();location.hash!=='#search'&&(location.hash='#search');
+  o.toBlob(b=>{if(b)useImage(b);else say('status','ตัดภาพไม่สำเร็จ ลองอีกครั้ง','err')},'image/png');
+});
+$('snapX').onclick=closeSnap;
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('snap').hidden)closeSnap()});
+$('scrBtn').onclick=startSnap;
+// วางรูปจากคลิปบอร์ด (เช่น Win+Shift+S แล้ว Ctrl+V) ในหน้าค้นหา — Supervisor ขึ้นไป
+document.addEventListener('paste',e=>{if(!canSnap()||$('v-search').hidden)return;const it=[...(e.clipboardData&&e.clipboardData.items||[])].find(x=>x.type.startsWith('image/'));
+  if(!it)return;e.preventDefault();const f=it.getAsFile();if(f)useImage(f)});
+
 /* ---------- tabs ---------- */
 function route(){
   let v=location.hash==='#admin'?'admin':location.hash==='#plan'?'plan':location.hash==='#parts'?'parts':'search';
   if(v!=='search'&&!canAdmin()){v='search';history.replaceState(null,'','#search')}
+  $('scrBtn').hidden=!canSnap();
   const admin=v==='admin';
   for(const k of ['search','plan','parts','admin']){$('v-'+k).hidden=v!==k;const t=$('t-'+k);if(v===k)t.setAttribute('aria-current','page');else t.removeAttribute('aria-current')}
   if(v==='plan')initPlanView();
@@ -1509,7 +1577,7 @@ function famOf(sym,part){ // จัดกลุ่มอะไหล่จาก
   return t.length>=3?t:'';
 }
 let PLAN=null;
-const APP_VER=35; // เพิ่มทุกครั้งที่อัปโหลด index.html ใหม่ ระบบจะเตือนเครื่องที่ยังเปิดเวอร์ชันเก่าค้างไว้
+const APP_VER=36; // เพิ่มทุกครั้งที่อัปโหลด index.html ใหม่ ระบบจะเตือนเครื่องที่ยังเปิดเวอร์ชันเก่าค้างไว้
 function checkUpdate(){
   if(!/github\.io$/i.test(location.hostname))return;
   fetch(location.pathname+'?_='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'').then(t=>{const m=t.match(/const APP_VER=(\d+)/);
