@@ -1257,10 +1257,13 @@ async function paddleOCR(crop){
   if(crop){src=document.createElement('canvas');src.width=Math.round(crop.w);src.height=Math.round(crop.h);
     src.getContext('2d').drawImage(ocrImg,crop.x,crop.y,crop.w,crop.h,0,0,crop.w,crop.h);W0=src.width;H0=src.height}
   say('status','🤖 กำลังหาตำแหน่งตัวอักษรในรูป…');
-  const boxes=(await paddleDetect(src,W0,H0)).filter(b=>b.len>=b.wid*2).sort((a,b)=>b.len*b.wid-a.len*a.wid).slice(0,24);
+  const boxes=(await paddleDetect(src,W0,H0)).filter(b=>b.len>=b.wid*2).sort((a,b)=>b.len*b.wid-a.len*a.wid).slice(0,40);
   const lines=[];
   for(let i=0;i<boxes.length;i++){say('status',`🤖 กำลังอ่านตัวอักษร… ${i+1}/${boxes.length}`);
-    const r=await paddleRecognize(src,boxes[i]);if(r.text.replace(/[^A-Za-z0-9]/g,'').length>=4)lines.push(r)}
+    const r=await paddleRecognize(src,boxes[i]);if(r.text.replace(/[^A-Za-z0-9]/g,'').length>=4)lines.push({...r,cx:boxes[i].cx,cy:boxes[i].cy,h:boxes[i].wid})}
+  // เรียงตามตำแหน่งบนภาพ: บนลงล่าง แล้วซ้ายไปขวา (บรรทัดเดียวกันถ้าห่างกันไม่ถึงครึ่งความสูงตัวอักษร)
+  const hs=lines.map(l=>l.h).sort((a,b)=>a-b),tol=(hs[hs.length>>1]||10)*.5;
+  lines.sort((a,b)=>Math.abs(a.cy-b.cy)<=tol?a.cx-b.cx:a.cy-b.cy);
   return lines;
 }
 function paddleMatch(lines){
@@ -1647,7 +1650,7 @@ function famOf(sym,part){ // จัดกลุ่มอะไหล่จาก
   return t.length>=3?t:'';
 }
 let PLAN=null;
-const APP_VER=37; // เพิ่มทุกครั้งที่อัปโหลด index.html ใหม่ ระบบจะเตือนเครื่องที่ยังเปิดเวอร์ชันเก่าค้างไว้
+const APP_VER=38; // เพิ่มทุกครั้งที่อัปโหลด index.html ใหม่ ระบบจะเตือนเครื่องที่ยังเปิดเวอร์ชันเก่าค้างไว้
 function checkUpdate(){
   if(!/github\.io$/i.test(location.hostname))return;
   fetch(location.pathname+'?_='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'').then(t=>{const m=t.match(/const APP_VER=(\d+)/);
