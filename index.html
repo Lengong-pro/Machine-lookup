@@ -273,6 +273,11 @@ dl>:nth-last-child(-n+2){border-bottom:0}
  @media (max-width:600px){.mt thead{display:none}.mt,.mt tbody,.mt tr{display:block}.mt tr{padding:10px 14px;border-bottom:1px solid var(--line)}
 .mt td{display:flex;gap:10px;border:0!important;padding:3px 0!important}.mt td.n{display:none}.mt td.c{font-size:15px;padding-bottom:6px!important;flex-direction:column;gap:2px}
 .mt td[data-l]::before{content:attr(data-l);flex:none;width:6.5em;color:var(--muted);font-size:12px}}
+.mt td.dml{min-width:280px;width:44%}.mt td.tp{min-width:130px}.dml>.small{margin-bottom:4px}.dml ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.dml li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 10px;align-items:baseline;padding:6px 0;border-top:1px dashed var(--line)}
+.dml li:first-child{border-top:0;padding-top:0}.dml li:last-child{padding-bottom:0}
+.mt td.dml,.mt td.tp{white-space:normal}.dml .st{white-space:nowrap}.dml .pt{font-weight:600;white-space:normal;overflow-wrap:anywhere;line-height:1.35}.dml .dt{color:var(--muted);font-size:13px;white-space:nowrap}
+@media (max-width:600px){.mt td.dml{min-width:0;flex-direction:column}.mt td.dml::before{width:auto}.dml li{grid-template-columns:auto minmax(0,1fr)}.dml .dt{grid-column:2}}
 .mt .mono{font-family:var(--f-mono,ui-monospace,monospace);white-space:nowrap}
 .tbl tr.pick{cursor:pointer}.tbl tr.pick:hover td{background:var(--surface-2)}.tbl tr.sel td{background:color-mix(in srgb,var(--accent) 12%,transparent)}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
@@ -950,9 +955,10 @@ function machineRow(r){
   const area=isTray(code)?TMS:(areaOf(fk)||'');
   const st=dmStatus(recs)||{txt:col(m,/^(สถานะ\s*เครื่องจักร|machine\s*status|status)$/i),cls:''};
   let open=0,worst='';for(const x of recs){const k=x.sh._c.si>=0?stClass(x.r[x.sh._c.si]):'';if(k&&k!=='ok'){open++;if(LV_ORDER[k]>LV_ORDER[worst])worst=k}}
-  let last=null;try{const ev=buildPlan().byM.get(fk)||[];for(const e of ev)if(!last||e.d>last.d)last=e}catch(e){}
-  return {...r,fk,code,type,area,st,open,worst,n:recs.length,last};
+  let openList=[];try{openList=(buildPlan().byM.get(fk)||[]).filter(e=>e.lv&&e.lv!=='ok').sort((a,b)=>(dmRank(b.lvTxt)-dmRank(a.lvTxt))||b.d-a.d)}catch(e){} // ปิดใช้งาน > ระดับ 3 > 2 > 1 แล้วใหม่ไปเก่า
+  return {...r,fk,code,type,area,st,open,worst,n:recs.length,openList};
 }
+const dmLvShort=e=>{const t=String(e.lvTxt||'');const m=t.match(/ระดับ\s*\d/);return /ปิดใช้งาน/.test(t)?'ปิดใช้งาน':m?m[0].replace(/\s+/,' '):t||'ค้าง'};
 function showMulti(parts){
   const seen=new Set(),rows=[];
   for(const p of parts){const r=resolveCode(p);if(r.u){if(seen.has(r.u.fk))continue;seen.add(r.u.fk);rows.push(machineRow(r))}else rows.push(r)}
@@ -962,19 +968,18 @@ function showMulti(parts){
     <h2>ผลค้นหา ${rows.length} ตำแหน่ง <span class="chip">พบ ${ok.length}</span>${openN?` <span class="chip">มี DM ค้าง ${openN}</span>`:''}${bad?` <span class="chip">ไม่พบ/ไม่แน่ใจ ${bad}</span>`:''}</h2>
     <div class="small">แตะแถวเพื่อเปิดรายละเอียดเต็มด้านล่าง · ตารางนี้ยังอยู่ ดูเครื่องถัดไปได้เลย</div>
     <div class="btns"><button class="ghost sm" type="button" id="mXl">ดาวน์โหลดเป็น Excel</button></div><div class="status" id="mStatus" role="status"></div></div>
-    <div class="tbl scroll"><table class="stack mt"><thead><tr><th>#</th><th>ตำแหน่ง</th><th>ประเภท</th><th>พื้นที่</th><th>สถานะเครื่องจักร</th><th>DM ค้าง</th><th>DM ล่าสุด</th></tr></thead><tbody>
-    ${rows.map((r,i)=>r.u?`<tr class="pick" data-fk="${esc(r.fk)}"><td class="n">${i+1}</td><td class="c"><b class="mono">${esc(r.code)}</b>${r.guessed?`<div class="small">เดาจาก “${esc(r.q)}”</div>`:''}</td><td data-l="ประเภท">${esc(r.type||'—')}</td><td data-l="พื้นที่">${esc(r.area||'—')}</td>
+    <div class="tbl scroll"><table class="stack mt"><thead><tr><th>#</th><th>ตำแหน่ง</th><th>ประเภท · พื้นที่</th><th>สถานะเครื่องจักร</th><th>รายการ DM ค้าง</th></tr></thead><tbody>
+    ${rows.map((r,i)=>r.u?`<tr class="pick" data-fk="${esc(r.fk)}"><td class="n">${i+1}</td><td class="c"><b class="mono">${esc(r.code)}</b>${r.guessed?`<div class="small">เดาจาก “${esc(r.q)}”</div>`:''}</td><td data-l="ประเภท · พื้นที่" class="tp">${esc(r.type||'—')}<div class="small">${esc(r.area||'ไม่มีข้อมูลพื้นที่')}</div></td>
       <td data-l="สถานะ">${r.st&&r.st.txt?(r.st.cls?`<span class="st ${r.st.cls}">${esc(r.st.txt)}</span>`:esc(r.st.txt)):'—'}</td>
-      <td data-l="DM ค้าง">${r.open?`<span class="st ${r.worst}">${r.open} ค้าง</span>`:r.n?'—':'<span class="small">ไม่มี DM</span>'}</td>
-      <td data-l="DM ล่าสุด">${r.last?`${fmtD(r.last.d)}<div class="small wr">${esc(r.last.sym||'')}</div>`:'—'}</td></tr>`
-      :`<tr><td class="n">${i+1}</td><td class="c"><b class="mono">${esc(r.q)}</b></td><td colspan="5" data-l="ผล">${r.none?'<span class="st off">ไม่พบเครื่องจักร</span>':`ไม่แน่ใจ หมายถึง ${r.alts.map(u=>`<button class="lnk" type="button" data-alt="${i}" data-fk="${esc(u.fk)}">${esc(u.code)}</button>`).join(' ')}`}</td></tr>`).join('')}
+      <td data-l="รายการ DM ค้าง" class="dml">${r.openList.length?`<div class="small">ค้าง ${r.openList.length} รายการ</div><ul>${r.openList.map(e=>`<li><span class="st ${e.lv}">${esc(dmLvShort(e))}</span><span class="pt">${esc(e.part||famTitle(e.fam||'')||e.sym||'ไม่ระบุอะไหล่')}</span><span class="dt">${fmtD(e.d)}</span></li>`).join('')}</ul>`:`<span class="small">${r.n?'ไม่มี DM ค้าง':'ไม่มี DM'}</span>`}</td></tr>`
+      :`<tr><td class="n">${i+1}</td><td class="c"><b class="mono">${esc(r.q)}</b></td><td colspan="3" data-l="ผล">${r.none?'<span class="st off">ไม่พบเครื่องจักร</span>':`ไม่แน่ใจ หมายถึง ${r.alts.map(u=>`<button class="lnk" type="button" data-alt="${i}" data-fk="${esc(u.fk)}">${esc(u.code)}</button>`).join(' ')}`}</td></tr>`).join('')}
     </tbody></table></div></article>`;
   const M=$('multi');
   M.querySelectorAll('tr.pick').forEach(tr=>tr.onclick=()=>{M.querySelectorAll('tr.sel').forEach(x=>x.classList.remove('sel'));tr.classList.add('sel');MULTI_KEEP=true;showMachine(tr.dataset.fk,true);$('out').scrollIntoView({behavior:'smooth',block:'start'})});
   M.querySelectorAll('[data-alt]').forEach(b=>b.onclick=()=>{const i=+b.dataset.alt,u=UNIV.find(x=>x.fk===b.dataset.fk);if(!u)return;
     const ps=multiCache.map(r=>r.u?r.code:r.q);ps[i]=u.code;$('q').value=ps.join(', ');showMulti(ps)});
-  $('mXl').onclick=()=>downloadBook([{name:'หลายตำแหน่ง',headers:['ตำแหน่ง','ที่พิมพ์','ประเภท','พื้นที่','สถานะเครื่องจักร','DM ค้าง','DM ทั้งหมด','DM ล่าสุด','อาการล่าสุด'],
-    rows:multiCache.map(r=>r.u?[r.code,r.q,r.type,r.area,r.st?r.st.txt:'',r.open,r.n,r.last?fmtD(r.last.d):'',r.last?r.last.sym:'']:[r.q,r.q,'','',r.none?'ไม่พบเครื่องจักร':'ไม่แน่ใจ','','','',''])}],`positions-${isoD(Date.now())}.xlsx`,'mStatus');
+  $('mXl').onclick=()=>downloadBook([{name:'หลายตำแหน่ง',headers:['ตำแหน่ง','ที่พิมพ์','ประเภท','พื้นที่','สถานะเครื่องจักร','DM ค้าง','DM ทั้งหมด','รายการ DM ค้าง (ระดับ · อะไหล่ · วันที่ชำรุด)'],
+    rows:multiCache.map(r=>r.u?[r.code,r.q,r.type,r.area,r.st?r.st.txt:'',r.open,r.n,r.openList.map(e=>`${dmLvShort(e)} · ${e.part||famTitle(e.fam||'')||e.sym||'ไม่ระบุอะไหล่'} · ${fmtD(e.d)}`).join('\n')]:[r.q,r.q,'','',r.none?'ไม่พบเครื่องจักร':'ไม่แน่ใจ','','',''])}],`positions-${isoD(Date.now())}.xlsx`,'mStatus');
   say('status',`ค้นหา ${rows.length} ตำแหน่ง`+(bad?` · ${bad} ตำแหน่งต้องตรวจ`:''),bad?'':'good');
 }
 // วางหลายบรรทัด (เช่นคัดลอกทั้งคอลัมน์จาก Excel) → แปลงเป็นคั่นด้วยจุลภาค
@@ -1650,7 +1655,7 @@ function famOf(sym,part){ // จัดกลุ่มอะไหล่จาก
   return t.length>=3?t:'';
 }
 let PLAN=null;
-const APP_VER=38; // เพิ่มทุกครั้งที่อัปโหลด index.html ใหม่ ระบบจะเตือนเครื่องที่ยังเปิดเวอร์ชันเก่าค้างไว้
+const APP_VER=39; // เพิ่มทุกครั้งที่อัปโหลด index.html ใหม่ ระบบจะเตือนเครื่องที่ยังเปิดเวอร์ชันเก่าค้างไว้
 function checkUpdate(){
   if(!/github\.io$/i.test(location.hostname))return;
   fetch(location.pathname+'?_='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'').then(t=>{const m=t.match(/const APP_VER=(\d+)/);
