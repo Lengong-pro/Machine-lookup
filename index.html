@@ -276,8 +276,9 @@ dl>:nth-last-child(-n+2){border-bottom:0}
 .mt td.dml{min-width:280px;width:44%}.mt td.tp{min-width:130px}.dml>.small{margin-bottom:4px}.dml ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
 .dml li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 10px;align-items:baseline;padding:6px 0;border-top:1px dashed var(--line)}
 .dml li:first-child{border-top:0;padding-top:0}.dml li:last-child{padding-bottom:0}
-.mt td.dml,.mt td.tp{white-space:normal}.dml .st{white-space:nowrap}.dml .pt{font-weight:600;white-space:normal;overflow-wrap:anywhere;line-height:1.35}.dml .dt{color:var(--muted);font-size:13px;white-space:nowrap}
-@media (max-width:600px){.mt td.dml{min-width:0;flex-direction:column}.mt td.dml::before{width:auto}.dml li{grid-template-columns:auto minmax(0,1fr)}.dml .dt{grid-column:2}}
+.mt td.dml,.mt td.tp{white-space:normal}.dml .st{white-space:nowrap}.dml .pt{font-weight:600;white-space:normal;overflow-wrap:anywhere;line-height:1.35}.dml .pc{display:inline;font-weight:500;font-size:12.5px;line-height:1.9;padding:1px 7px;margin-left:4px;border-radius:6px;background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--line);color:var(--muted);-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.dml .dt{color:var(--muted);font-size:13px;white-space:nowrap}
+@media (max-width:600px){.mt td.dml{min-width:0;width:auto;flex-direction:column}.mt td.dml>*{width:100%}.mt td.dml::before{width:auto}.dml li{grid-template-columns:auto minmax(0,1fr)}.dml .dt{grid-column:2}}
 .mt .mono{font-family:var(--f-mono,ui-monospace,monospace);white-space:nowrap}
 .tbl tr.pick{cursor:pointer}.tbl tr.pick:hover td{background:var(--surface-2)}.tbl tr.sel td{background:color-mix(in srgb,var(--accent) 12%,transparent)}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
@@ -971,15 +972,15 @@ function showMulti(parts){
     <div class="tbl scroll"><table class="stack mt"><thead><tr><th>#</th><th>ตำแหน่ง</th><th>ประเภท · พื้นที่</th><th>สถานะเครื่องจักร</th><th>รายการ DM ค้าง</th></tr></thead><tbody>
     ${rows.map((r,i)=>r.u?`<tr class="pick" data-fk="${esc(r.fk)}"><td class="n">${i+1}</td><td class="c"><b class="mono">${esc(r.code)}</b>${r.guessed?`<div class="small">เดาจาก “${esc(r.q)}”</div>`:''}</td><td data-l="ประเภท · พื้นที่" class="tp">${esc(r.type||'—')}<div class="small">${esc(r.area||'ไม่มีข้อมูลพื้นที่')}</div></td>
       <td data-l="สถานะ">${r.st&&r.st.txt?(r.st.cls?`<span class="st ${r.st.cls}">${esc(r.st.txt)}</span>`:esc(r.st.txt)):'—'}</td>
-      <td data-l="รายการ DM ค้าง" class="dml">${r.openList.length?`<div class="small">ค้าง ${r.openList.length} รายการ</div><ul>${r.openList.map(e=>`<li><span class="st ${e.lv}">${esc(dmLvShort(e))}</span><span class="pt">${esc(e.part||famTitle(e.fam||'')||e.sym||'ไม่ระบุอะไหล่')}</span><span class="dt">${fmtD(e.d)}</span></li>`).join('')}</ul>`:`<span class="small">${r.n?'ไม่มี DM ค้าง':'ไม่มี DM'}</span>`}</td></tr>`
+      <td data-l="รายการ DM ค้าง" class="dml">${r.openList.length?`<div class="small">ค้าง ${r.openList.length} รายการ</div><ul>${r.openList.map(e=>`<li><span class="st ${e.lv}">${esc(dmLvShort(e))}</span><span class="pt">${esc(e.sym||'—')}${e.part?` <span class="pc">${esc(e.part)}</span>`:''}</span><span class="dt">${fmtD(e.d)}</span></li>`).join('')}</ul>`:`<span class="small">${r.n?'ไม่มี DM ค้าง':'ไม่มี DM'}</span>`}</td></tr>`
       :`<tr><td class="n">${i+1}</td><td class="c"><b class="mono">${esc(r.q)}</b></td><td colspan="3" data-l="ผล">${r.none?'<span class="st off">ไม่พบเครื่องจักร</span>':`ไม่แน่ใจ หมายถึง ${r.alts.map(u=>`<button class="lnk" type="button" data-alt="${i}" data-fk="${esc(u.fk)}">${esc(u.code)}</button>`).join(' ')}`}</td></tr>`).join('')}
     </tbody></table></div></article>`;
   const M=$('multi');
   M.querySelectorAll('tr.pick').forEach(tr=>tr.onclick=()=>{M.querySelectorAll('tr.sel').forEach(x=>x.classList.remove('sel'));tr.classList.add('sel');MULTI_KEEP=true;showMachine(tr.dataset.fk,true);$('out').scrollIntoView({behavior:'smooth',block:'start'})});
   M.querySelectorAll('[data-alt]').forEach(b=>b.onclick=()=>{const i=+b.dataset.alt,u=UNIV.find(x=>x.fk===b.dataset.fk);if(!u)return;
     const ps=multiCache.map(r=>r.u?r.code:r.q);ps[i]=u.code;$('q').value=ps.join(', ');showMulti(ps)});
-  $('mXl').onclick=()=>downloadBook([{name:'หลายตำแหน่ง',headers:['ตำแหน่ง','ที่พิมพ์','ประเภท','พื้นที่','สถานะเครื่องจักร','DM ค้าง','DM ทั้งหมด','รายการ DM ค้าง (ระดับ · อะไหล่ · วันที่ชำรุด)'],
-    rows:multiCache.map(r=>r.u?[r.code,r.q,r.type,r.area,r.st?r.st.txt:'',r.open,r.n,r.openList.map(e=>`${dmLvShort(e)} · ${e.part||famTitle(e.fam||'')||e.sym||'ไม่ระบุอะไหล่'} · ${fmtD(e.d)}`).join('\n')]:[r.q,r.q,'','',r.none?'ไม่พบเครื่องจักร':'ไม่แน่ใจ','','',''])}],`positions-${isoD(Date.now())}.xlsx`,'mStatus');
+  $('mXl').onclick=()=>downloadBook([{name:'หลายตำแหน่ง',headers:['ตำแหน่ง','ที่พิมพ์','ประเภท','พื้นที่','สถานะเครื่องจักร','DM ค้าง','DM ทั้งหมด','รายการ DM ค้าง (ระดับ · อาการ · อะไหล่ · วันที่ชำรุด)'],
+    rows:multiCache.map(r=>r.u?[r.code,r.q,r.type,r.area,r.st?r.st.txt:'',r.open,r.n,r.openList.map(e=>`${dmLvShort(e)} · ${e.sym||'—'}${e.part?` · อะไหล่: ${e.part}`:''} · ${fmtD(e.d)}`).join('\n')]:[r.q,r.q,'','',r.none?'ไม่พบเครื่องจักร':'ไม่แน่ใจ','','',''])}],`positions-${isoD(Date.now())}.xlsx`,'mStatus');
   say('status',`ค้นหา ${rows.length} ตำแหน่ง`+(bad?` · ${bad} ตำแหน่งต้องตรวจ`:''),bad?'':'good');
 }
 // วางหลายบรรทัด (เช่นคัดลอกทั้งคอลัมน์จาก Excel) → แปลงเป็นคั่นด้วยจุลภาค
@@ -1655,7 +1656,7 @@ function famOf(sym,part){ // จัดกลุ่มอะไหล่จาก
   return t.length>=3?t:'';
 }
 let PLAN=null;
-const APP_VER=39; // เพิ่มทุกครั้งที่อัปโหลด index.html ใหม่ ระบบจะเตือนเครื่องที่ยังเปิดเวอร์ชันเก่าค้างไว้
+const APP_VER=40; // เพิ่มทุกครั้งที่อัปโหลด index.html ใหม่ ระบบจะเตือนเครื่องที่ยังเปิดเวอร์ชันเก่าค้างไว้
 function checkUpdate(){
   if(!/github\.io$/i.test(location.hostname))return;
   fetch(location.pathname+'?_='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'').then(t=>{const m=t.match(/const APP_VER=(\d+)/);
